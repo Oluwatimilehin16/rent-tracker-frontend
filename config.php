@@ -7,7 +7,7 @@ $port = getenv('DB_PORT');
 
 $conn = new mysqli($host, $user, $pass, $dbname, $port);
 
-if ($mysqli->connect_error) {
-    die("Connection failed: " . $mysqli->connect_error);
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
 }
 ?>
