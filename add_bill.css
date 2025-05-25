@@ -1,0 +1,256 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    background-color: #003c00;
+    color: #fff;
+    padding-top: 70px;
+}
+
+/* Header */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color:#218838;
+    padding: 3px 20px;
+    position: fixed; /* Keep this if you want it fixed */
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 100;
+}
+
+header .logo img {
+    width: 95px;
+}
+
+nav ul {
+    display: flex;
+    list-style-type: none;
+}
+
+nav ul li {
+    margin: 0 15px;
+}
+
+nav ul li a {
+    color:#fff;
+    text-decoration: none;
+    font-size: 16px;
+}
+
+nav ul li a:hover {
+    color:#ecc700;
+}
+
+
+.content-wrapper {
+    background-color: #fff;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08); /* Softer shadow */
+}
+
+.add-bill-container {
+    padding: 40px;
+    display: flex;
+    justify-content: center; /* Center horizontally */
+    align-items: flex-start; /* Align content to the top of the container */
+}
+
+h2 {
+    color: #28a745; /* A more vibrant green */
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 2.2em;
+}
+
+h2 i {
+    margin-right: 8px;
+}
+
+.explanatory-text {
+    color: #777;
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 1em;
+}
+
+footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    padding: 4px 20px;
+    font-size: 12px;
+    width: 100%;
+    margin-top: auto;
+}
+
+/* Centering Footer Content */
+.footer-content {
+    max-width: 1200px;
+    margin: auto;
+    padding: 0 20px;
+}
+.footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+
+.add-bill-form {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 25px;
+}
+
+@media (min-width: 768px) {
+    .add-bill-form {
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* More responsive layout */
+    }
+    .add-bill-form > .submit-btn {
+        grid-column: 1 / -1; /* Make submit button full width */
+    }
+}
+
+.add-bill-form .form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.add-bill-form .form-group label {
+    font-size: 0.95em;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #555;
+    display: flex;
+    align-items: center;
+}
+
+.add-bill-form .form-group label i {
+    margin-right: 8px;
+    color: #28a745;
+}
+
+.add-bill-form .form-group input[type="text"],
+.add-bill-form .form-group input[type="number"],
+.add-bill-form .form-group input[type="date"],
+.add-bill-form .form-group select {
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1em;
+    color: #333;
+}
+
+.add-bill-form .form-group input[type="text"]:focus,
+.add-bill-form .form-group input[type="number"]:focus,
+.add-bill-form .form-group input[type="date"]:focus,
+.add-bill-form .form-group select:focus {
+    border-color: #28a745;
+    outline: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.add-bill-form .form-group select {
+    appearance: none; /* Remove default arrow */
+    background-image: url('data:image/svg+xml;charset=UTF-8,<svg fill="%23555" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+}
+
+.add-bill-form .form-group .checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.add-bill-form .form-group .checkbox-group input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.add-bill-form .form-group .checkbox-group label {
+    font-weight: normal;
+    margin-bottom: 0;
+}
+
+.add-bill-form .submit-btn {
+    background-color: #28a745;
+    color: white;
+    padding: 14px 25px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.add-bill-form .submit-btn i {
+    margin-right: 10px;
+}
+
+.add-bill-form .submit-btn:hover {
+    background-color: #218838;
+}
+
+/* Other Bill Name Input */
+#other_bill_name_group {
+    /* Display controlled by JavaScript */
+}
+
+/* Form Text */
+.form-text {
+    font-size: 0.85em;
+    color: #777;
+    margin-top: 5px;
+}
+
+/* Responsive Design Adjustments */
+@media screen and (max-width: 768px) {
+    .add-bill-container {
+        padding: 30px;
+        margin-top: 90px;
+    }
+
+    header .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    header nav {
+        margin-top: 15px;
+    }
+
+    header nav ul {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    header nav ul li {
+        margin: 10px 0;
+    }
+
+    .add-bill-form {
+        grid-template-columns: 1fr;
+    }
+}

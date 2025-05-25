@@ -1,0 +1,215 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    background-color: #003c00;
+    color: #fff;
+}
+
+
+/* Flash Message */
+.message {
+    position: absolute;
+    top: 68px;
+    left: 56.5%;
+    transform: translateX(-50%);
+    width: 50%;
+    padding: 0.5rem 1.5rem;
+    display: flex;
+    color: white;
+    text-align: center;
+    text-transform: capitalize;
+    z-index: 1000;
+    font-weight: 700;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Logo */
+.logo {
+    position: absolute;
+    top: 20px; 
+    left: 40px; /* Moves the logo to the left */
+}
+
+.logo img {
+    height: 80px; /* Adjust size */
+    width: auto;
+}
+
+/* Centering Login Container */
+.login-container {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+/* Login Form */
+.login-form {
+    background: rgba(255, 255, 255, 0.15); /* Softer contrast */
+    padding: 30px;
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+    width: 400px;
+    text-align: center;
+    transition: 0.3s ease-in-out;
+    min-height: 400px;
+}
+.reg-form {
+    background: rgba(255, 255, 255, 0.15); /* Softer contrast */
+    padding: 30px;
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+    width: 500px;
+    text-align: center;
+    transition: 0.3s ease-in-out;
+    min-height: 500px;
+}
+
+/* Hover Effect */
+.login-form:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.05);
+}
+
+/* Form Heading */
+.login-form h2 {
+    color: #fff;
+    margin-bottom: 20px;
+    font-size: 22px;
+}
+
+/* Input Fields */
+.input-group input {
+    width: 100%;
+    padding: 15px;
+    margin: 15px 0;
+    border: none;
+    border-radius: 5px;
+    outline: none;
+    background: rgba(255, 255, 255, 0.9);
+    color: #003c00;
+    font-size: 16px;
+}
+.input-groupreg input {
+    width: 100%;
+    padding: 12px;
+    margin: 12px 0;
+    border: none;
+    border-radius: 5px;
+    outline: none;
+    background: rgba(255, 255, 255, 0.9);
+    color: #003c00;
+    font-size: 14px;
+}
+
+/* Placeholder Text Color */
+.input-group input::placeholder {
+    color: #003c00;
+}
+.input-groupreg input::placeholder {
+    color: #003c00;
+}
+
+/* Options (Forgot Password) */
+.options {
+    font-size: 14px;
+    margin-top: 5px;
+}
+
+.options a {
+    color: #f4e99b; /* Soft yellow */
+    text-decoration: none;
+}
+
+.options a:hover {
+    text-decoration: underline;
+}
+
+/* Login Button */
+.login-btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 5px;
+    background: #ecc700;
+    color: #003c00;
+    font-size: 18px;
+    margin-top: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.login-btn:hover {
+    background: #d4b400;
+}
+
+/* Sign Up Link */
+.signup-text {
+    margin-top: 20px;
+    color: #fff;
+}
+
+.signup-text a {
+    color: #ecc700;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.signup-text a:hover {
+    text-decoration: underline;
+}
+
+/* Footer Styling */
+footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    padding: 4px 20px;
+    font-size: 12px;
+    width: 100%;
+}
+
+/* Centering Footer Content */
+.footer-content {
+    max-width: 1200px;
+    margin: auto;
+    padding: 0 20px;
+}
+/* Styled Select Dropdown */
+.select-field {
+    width: 100%;
+    padding: 12px;
+    margin: 12px 0;
+    border: none;
+    border-radius: 5px;
+    outline: none;
+    background: rgba(255, 255, 255, 0.9);
+    color: #003c00;
+    font-size: 14px;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D'14'%20height%3D'10'%20viewBox%3D'0%200%2014%2010'%20xmlns%3D'http%3A//www.w3.org/2000/svg'%3E%3Cpath%20d%3D'M1%201l6%206%206-6'%20stroke%3D'%23003c00'%20stroke-width%3D'2'%20fill%3D'none'%20fill-rule%3D'evenodd'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 12px;
+}
+
+/* Optional: Placeholder option style */
+.select-field option:first-child {
+    color: #666;
+}
