@@ -123,10 +123,9 @@ $members_query = mysqli_query($conn, "
     </div>
 </div>
 
-<!-- ✅ Socket.IO -->
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script>
-    const socket = io("https://rent-tracker-backend.onrender.com"); // Update this for production
+    const socket = io("https://rent-tracker-backend.onrender.com");
     const groupId = <?php echo $group_id; ?>;
     const senderId = <?php echo $landlord_id; ?>;
     const senderName = <?php echo json_encode($landlord_name); ?>;
@@ -163,17 +162,16 @@ $members_query = mysqli_query($conn, "
     // ✅ Join group
     socket.emit("join-group", groupId);
 
-    // ✅ Auto-resize textarea
-    messageInput.addEventListener('input', function() {
+    // ✅ Auto-resize textarea and typing indicator
+    messageInput.addEventListener("input", function () {
         this.style.height = 'auto';
-        this.style.height = (this.scrollHeight) + 'px';
-        
-        // Typing indicator
+        this.style.height = this.scrollHeight + 'px';
+
         if (!isTyping) {
             isTyping = true;
             socket.emit("typing-start", { group_id: groupId, sender_name: senderName });
         }
-        
+
         clearTimeout(typingTimeout);
         typingTimeout = setTimeout(() => {
             isTyping = false;
@@ -181,7 +179,7 @@ $members_query = mysqli_query($conn, "
         }, 1000);
     });
 
-    // ✅ Send on Enter (without Shift)
+    // ✅ Send on Enter
     messageInput.addEventListener("keydown", function (e) {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -189,13 +187,16 @@ $members_query = mysqli_query($conn, "
         }
     });
 
-    // ✅ Send message
+    // ✅ Send on button click
+    sendBtn.addEventListener("click", sendMessage);
+
+    // ✅ Send message function
     function sendMessage() {
         const msg = messageInput.value.trim();
         if (!msg) return;
 
         sendBtn.disabled = true;
-        
+
         socket.emit("send-group-message", {
             group_id: groupId,
             sender_id: senderId,
@@ -206,55 +207,43 @@ $members_query = mysqli_query($conn, "
 
         messageInput.value = "";
         messageInput.style.height = 'auto';
-        
-        // Stop typing indicator
+
         if (isTyping) {
             isTyping = false;
             socket.emit("typing-stop", { group_id: groupId });
         }
-        
-        setTimeout(() => sendBtn.disabled = false, 500);
+
+        setTimeout(() => sendBtn.disabled = false, 300);
     }
 
-    // ✅ Format time
+    // ✅ Format time nicely
     function formatLocalTime(utcString) {
         const date = new Date(utcString);
         const now = new Date();
         const diffInHours = (now - date) / (1000 * 60 * 60);
-        
         if (diffInHours < 24) {
             return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         } else {
-            return date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + 
-                   ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            return date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' +
+                date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
     }
 
-    // ✅ Group consecutive messages
+    // ✅ Group logic
     function shouldGroupMessage(data) {
         if (!lastMessageSender) return false;
-        
         const currentTime = new Date(data.timestamp);
         const timeDiff = (currentTime - lastMessageTime) / (1000 * 60); // minutes
-        
         return lastMessageSender === data.sender_id && timeDiff < 5;
     }
 
-    // ✅ Append message with grouping
+    // ✅ Append message
     function appendMessage(data) {
         allMessages.push(data);
-        
+
         const isMe = data.sender_id == senderId;
         const isGrouped = shouldGroupMessage(data);
         const time = formatLocalTime(data.timestamp);
-
-        if (!isGrouped) {
-            // Create new message group
-            const groupDiv = document.createElement("div");
-            groupDiv.classList.add("message-group");
-            groupDiv.setAttribute("data-sender", data.sender_id);
-            chatBox.appendChild(groupDiv);
-        }
 
         const messageDiv = document.createElement("div");
         messageDiv.classList.add("message");
@@ -278,9 +267,9 @@ $members_query = mysqli_query($conn, "
             `;
         }
 
-        // Add to the last message group or create new one
+        // Handle grouping
         const lastGroup = chatBox.lastElementChild;
-        if (lastGroup && lastGroup.getAttribute("data-sender") === data.sender_id.toString() && isGrouped) {
+        if (isGrouped && lastGroup && lastGroup.getAttribute("data-sender") === data.sender_id.toString()) {
             lastGroup.appendChild(messageDiv);
         } else {
             const newGroup = document.createElement("div");
@@ -292,11 +281,11 @@ $members_query = mysqli_query($conn, "
 
         lastMessageSender = data.sender_id;
         lastMessageTime = new Date(data.timestamp);
-        
-        chatBox.scrollTop = chatBox.scrollHeight;
+
+        setTimeout(() => chatBox.scrollTop = chatBox.scrollHeight, 0);
     }
 
-    // ✅ Typing indicators
+    // ✅ Typing
     socket.on("user-typing", (data) => {
         if (data.sender_name !== senderName) {
             typingIndicator.textContent = `${data.sender_name} is typing...`;
@@ -308,7 +297,7 @@ $members_query = mysqli_query($conn, "
         typingIndicator.classList.add("hidden");
     });
 
-    // ✅ Search functionality
+    // ✅ Search
     function toggleSearch() {
         searchContainer.classList.toggle("hidden");
         if (!searchContainer.classList.contains("hidden")) {
@@ -319,17 +308,17 @@ $members_query = mysqli_query($conn, "
         }
     }
 
-    searchInput.addEventListener("input", function() {
+    searchInput.addEventListener("input", function () {
         const query = this.value.toLowerCase().trim();
         searchResults.innerHTML = "";
-        
+
         if (query.length < 2) {
             searchResults.style.display = "none";
             return;
         }
 
-        const results = allMessages.filter(msg => 
-            msg.message.toLowerCase().includes(query) || 
+        const results = allMessages.filter(msg =>
+            msg.message.toLowerCase().includes(query) ||
             msg.sender_name.toLowerCase().includes(query)
         ).slice(0, 10);
 
@@ -343,9 +332,9 @@ $members_query = mysqli_query($conn, "
                     <div style="font-size: 0.8em; color: #666;">${formatLocalTime(result.timestamp)}</div>
                 `;
                 div.addEventListener("click", () => {
-                    // Highlight the message (you can implement scrolling to message here)
                     searchResults.style.display = "none";
                     searchInput.value = "";
+                    // Optional: Scroll to actual message by implementing highlight logic
                 });
                 searchResults.appendChild(div);
             });
@@ -354,7 +343,7 @@ $members_query = mysqli_query($conn, "
         }
     });
 
-    // ✅ Clear chat (visual only)
+    // ✅ Clear visual chat
     function clearChat() {
         if (confirm("Clear chat history? (This only clears your view, not the actual messages)")) {
             chatBox.innerHTML = "";
@@ -364,51 +353,48 @@ $members_query = mysqli_query($conn, "
         }
     }
 
-    // ✅ Toggle sidebar
+    // ✅ Sidebar toggle
     function toggleSidebar() {
-    const sidebar = document.getElementById("sidebar");
-    const toggleBtn = document.getElementById("toggleBtn");
-
-    // Toggle "hidden" class instead of manually setting display styles
-    sidebar.classList.toggle("hidden");
-    toggleBtn.textContent = sidebar.classList.contains("hidden") ? "Show" : "Hide";
-}
-
+        const sidebar = document.getElementById("sidebar");
+        const toggleBtn = document.getElementById("toggleBtn");
+        sidebar.classList.toggle("hidden");
+        toggleBtn.textContent = sidebar.classList.contains("hidden") ? "Show" : "Hide";
+    }
 
     // ✅ Load past messages
     window.onload = function () {
         fetch(`fetch_group_messages.php?group_id=${groupId}`)
-            .then(response => response.json())
+            .then(res => res.json())
             .then(messages => {
                 messages.forEach(appendMessage);
-                chatBox.scrollTop = chatBox.scrollHeight;
-                
-                // Update online count
-                document.getElementById("onlineCount").textContent = 
-                    `${document.querySelectorAll('.member-item').length} members`;
+                setTimeout(() => chatBox.scrollTop = chatBox.scrollHeight, 0);
+
+                const onlineCount = document.getElementById("onlineCount");
+                if (onlineCount) {
+                    onlineCount.textContent = `${document.querySelectorAll(".member-item").length} members`;
+                }
             })
-            .catch(error => {
-                console.error('Error loading messages:', error);
+            .catch(err => {
+                console.error("Error loading messages:", err);
                 chatBox.innerHTML = '<div class="text-center text-muted">Failed to load messages</div>';
             });
     };
 
-    // ✅ Real-time message receive
-    socket.on("group-message", data => {
-        appendMessage(data);
-    });
+    // ✅ Real-time message listener
+    socket.on("group-message", appendMessage);
 
-    // ✅ Handle window resize
-    window.addEventListener("resize", function() {
+    // ✅ Window resize fixes
+    window.addEventListener("resize", function () {
         if (window.innerWidth > 768) {
-            document.getElementById("sidebar").classList.remove("hidden");
-            document.getElementById("sidebar").style.display = "flex";
+            const sidebar = document.getElementById("sidebar");
+            sidebar.classList.remove("hidden");
+            sidebar.style.display = "flex";
         }
     });
 
-    // ✅ Click outside to close search
-    document.addEventListener("click", function(e) {
-        if (!searchContainer.contains(e.target)) {
+    // ✅ Close search when clicking outside
+    document.addEventListener("click", function (e) {
+        if (!searchContainer.contains(e.target) && !searchInput.contains(e.target)) {
             searchResults.style.display = "none";
         }
     });
