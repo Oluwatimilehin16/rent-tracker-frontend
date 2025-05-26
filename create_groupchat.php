@@ -94,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script>
-  const socket = io('http://localhost:3000'); // Or use your server IP if hosting externally
+  const socket = io('https://rent-tracker-backend.onrender.com'); // Or use your server IP if hosting externally
 </script>
 
 </body>

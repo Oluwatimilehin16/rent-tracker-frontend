@@ -1,13 +1,5 @@
 <?php
 include 'config.php';
-
-if (!$conn) {
-    die('No DB connection found');
-}
-
-if ($conn->connect_error) {
-    die('DB connection error: ' . $conn->connect_error);
-}
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -114,3 +106,5 @@ if (isset($message)) {
 <script src="script.js"></script>
 </body>
 </html>
+
+
