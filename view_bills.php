@@ -60,6 +60,7 @@ $filter = $_GET['filter'] ?? 'all';
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>View Bills - Rent & Utility Tracker</title>
     <link rel="stylesheet" href="view_bills.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -70,7 +71,10 @@ $filter = $_GET['filter'] ?? 'all';
         <div class="logo">
             <a href="index.php"><img src="./assets/logo.png" alt="RentTracker"></a>
         </div>
-        <nav>
+          <div class="hamburger" onclick="toggleMenu()">
+    <i class="fas fa-bars"></i>
+</div>
+        <nav id="main-nav">
             <ul>
                 <li><a href="create_class.php"><i class="fas fa-user-plus"></i> Invite</a></li>
                 <li><a href="add_bill.php"><i class="fas fa-plus-circle"></i> Add Bill</a></li>
@@ -199,5 +203,10 @@ $filter = $_GET['filter'] ?? 'all';
         </div>
     </div>
 </div>
+<script>
+    function toggleMenu() {
+        document.getElementById('main-nav').classList.toggle('active');
+    }
+</script>
 </body>
 </html>

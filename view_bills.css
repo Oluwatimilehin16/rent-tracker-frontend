@@ -59,7 +59,21 @@ nav ul li a.active {
     color: #ecc700;
     background-color: rgba(255,255,255,0.1);
 }
+.hamburger {
+    display: none;
+    font-size: 24px;
+    color: white;
+    cursor: pointer;
+}
 
+#main-nav ul {
+    display: flex;
+    flex-wrap: wrap;
+    list-style-type: none;
+    justify-content: center;
+    padding: 0;
+    margin-top: 10px;
+}
 .page-container {
     display: flex;
     flex-direction: column;
@@ -467,60 +481,66 @@ footer {
 }
 
 /* Responsive */
-@media (max-width: 992px) {
-    .dashboard-cards {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
 @media (max-width: 768px) {
-    .content-wrapper {
-        padding: 20px;
+    .hamburger {
+        display: block;
     }
 
-    .controls {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .filter-controls,
-    .action-controls,
-    .search-box {
+    #main-nav {
         width: 100%;
-        justify-content: center;
     }
 
-    .search-input {
-        width: 100%;
-        min-width: auto;
-    }
-
-    .bills-table {
-        overflow-x: auto;
-    }
-
-    .footer-content {
+    #main-nav ul {
+        display: none;
         flex-direction: column;
+        background-color: #218838;
+        width: 100%;
+        padding: 10px 0;
+    }
+
+    #main-nav.active ul {
+        display: flex;
+    }
+
+    #main-nav ul li {
+        width: 100%;
         text-align: center;
+        margin: 5px 0;
     }
 }
-
-@media (max-width: 576px) {
-    header {
-        flex-direction: column;
-        padding: 10px;
-    }
-
-    nav ul {
-        flex-direction: column;
-        align-items: center;
-    }
-
+@media (max-width: 600px) {
     .dashboard-cards {
         grid-template-columns: 1fr;
+    }
+
+    .content-wrapper {
+        padding: 15px;
     }
 
     .title {
         font-size: 22px;
     }
 }
+    .card {
+        padding: 15px;
+    }
+
+    .card-icon {
+        font-size: 24px;
+        width: 50px;
+        height: 50px;
+        line-height: 50px;
+    }
+
+    .card-value {
+        font-size: 20px;
+    }
+
+    .card-label {
+        font-size: 14px;
+    }
+
+    .card-money {
+        font-size: 16px;
+    }
+
