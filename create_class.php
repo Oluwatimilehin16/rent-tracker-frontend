@@ -35,12 +35,16 @@ if (isset($_POST['create_class'])) {
 <body>
 <div class="page-wrapper">
 <header>
+  <div class="top-bar">
     <div class="logo">
-        <a href="index.php"><img src="./assets/logo.png" alt="RentTracker"></a>
+      <a href="index.php"><img src="./assets/logo.png" alt="RentTracker"></a>
     </div>
-    <div class="menu-toggle" onclick="toggleMenu()">
-    <i class="fas fa-bars"></i>
-</div>
+    <div class="hamburger" onclick="toggleMenu()">
+      <i class="fas fa-bars"></i>
+    </div>
+  </div>
+
+  <nav id="main-nav">
     <nav>
         <ul>
             <li><a href="create_class.php"><i class="fas fa-user-plus"></i> Invite</a></li>
@@ -75,8 +79,8 @@ if (isset($_POST['create_class'])) {
 </footer>
 <script>
 function toggleMenu() {
-    const nav = document.querySelector('nav ul');
-    nav.classList.toggle('show');
+    const navList = document.querySelector('#main-nav ul');
+    navList.classList.toggle('show');
 }
 </script>
 

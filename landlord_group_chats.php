@@ -259,8 +259,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 function toggleMenu() {
-        document.getElementById('main-nav').classList.toggle('active');
-    }
+    const navList = document.querySelector('#main-nav ul');
+    navList.classList.toggle('show');
+}
 </script>
 
 </body>
