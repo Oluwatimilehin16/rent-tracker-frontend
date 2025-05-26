@@ -114,13 +114,13 @@ $members_query = mysqli_query($conn, "
 
         <div class="input-area">
             <div class="input-wrapper">
-                <textarea id="messageInput" placeholder="Type your message..." rows="1" autofocus></textarea>
-            </div>
-            <button class="send-btn" onclick="sendMessage()" id="sendBtn">
-                <span>Send</span>
-            </button>
-        </div>
-    </div>
+       <textarea id="messageInput" placeholder="Type your message..." rows="1" autofocus></textarea>
+</div>
+<button class="send-btn" id="sendBtn">
+    <span>Send</span>
+</button>
+</div>
+</div>
 </div>
 
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
@@ -146,51 +146,68 @@ $members_query = mysqli_query($conn, "
     let lastMessageSender = null;
     let lastMessageTime = null;
 
-    // ✅ Connection status
+    // Connection status logs
     socket.on("connect", () => {
+        console.log("[Socket] Connected");
         connectionStatus.textContent = "Connected";
         connectionStatus.className = "connection-status connected";
         setTimeout(() => connectionStatus.style.display = "none", 3000);
     });
 
     socket.on("disconnect", () => {
+        console.log("[Socket] Disconnected");
         connectionStatus.textContent = "Disconnected";
         connectionStatus.className = "connection-status disconnected";
         connectionStatus.style.display = "block";
     });
 
-    // ✅ Join group
+    // Join group
+    console.log("[Socket] Emitting join-group with groupId:", groupId);
     socket.emit("join-group", groupId);
 
-    // ✅ Auto-resize and typing indicator
+    // Auto-resize and typing indicator
     messageInput.addEventListener("input", function () {
+        console.log("[Input] User typing...");
         this.style.height = 'auto';
         this.style.height = this.scrollHeight + 'px';
 
         if (!isTyping) {
             isTyping = true;
+            console.log("[Typing] Emit typing-start");
             socket.emit("typing-start", { group_id: groupId, sender_name: senderName });
         }
 
         clearTimeout(typingTimeout);
         typingTimeout = setTimeout(() => {
             isTyping = false;
+            console.log("[Typing] Emit typing-stop");
             socket.emit("typing-stop", { group_id: groupId });
         }, 1000);
     });
 
+    // Send message on Enter key (without shift)
     messageInput.addEventListener("keydown", function (e) {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
+            console.log("[Keydown] Enter pressed, sending message");
             sendMessage();
         }
     });
 
-    sendBtn.addEventListener("click", sendMessage);
+    // Send button click
+    sendBtn.addEventListener("click", () => {
+        console.log("[Click] Send button clicked");
+        sendMessage();
+    });
 
     function sendMessage() {
         const msg = messageInput.value.trim();
-        if (!msg) return;
+        console.log("[sendMessage] Message to send:", msg);
+
+        if (!msg) {
+            console.log("[sendMessage] Empty message, abort sending");
+            return;
+        }
 
         sendBtn.disabled = true;
 
@@ -202,15 +219,21 @@ $members_query = mysqli_query($conn, "
             message: msg
         });
 
+        console.log("[sendMessage] Emitted send-group-message event");
+
         messageInput.value = "";
         messageInput.style.height = 'auto';
 
         if (isTyping) {
             isTyping = false;
+            console.log("[sendMessage] Emit typing-stop due to message send");
             socket.emit("typing-stop", { group_id: groupId });
         }
 
-        setTimeout(() => sendBtn.disabled = false, 300);
+        setTimeout(() => {
+            sendBtn.disabled = false;
+            console.log("[sendMessage] Send button re-enabled");
+        }, 300);
     }
 
     function formatLocalTime(utcString) {
@@ -231,7 +254,10 @@ $members_query = mysqli_query($conn, "
 
     function appendMessage(data) {
         // Prevent duplicates
-        if (allMessages.find(msg => msg.timestamp === data.timestamp && msg.sender_id === data.sender_id && msg.message === data.message)) return;
+        if (allMessages.find(msg => msg.timestamp === data.timestamp && msg.sender_id === data.sender_id && msg.message === data.message)) {
+            console.log("[appendMessage] Duplicate message ignored:", data);
+            return;
+        }
 
         allMessages.push(data);
 
@@ -281,19 +307,21 @@ $members_query = mysqli_query($conn, "
         setTimeout(() => chatBox.scrollTop = chatBox.scrollHeight, 0);
     }
 
-   socket.on("group-message", (data) => {
-    console.log("Received new group message:", data);
-    appendMessage(data);
-});
+    socket.on("group-message", (data) => {
+        console.log("[Socket] Received new group message:", data);
+        appendMessage(data);
+    });
 
     socket.on("user-typing", (data) => {
         if (data.sender_name !== senderName) {
+            console.log(`[Socket] ${data.sender_name} is typing...`);
             typingIndicator.textContent = `${data.sender_name} is typing...`;
             typingIndicator.classList.remove("hidden");
         }
     });
 
     socket.on("user-stopped-typing", () => {
+        console.log("[Socket] User stopped typing");
         typingIndicator.classList.add("hidden");
     });
 
