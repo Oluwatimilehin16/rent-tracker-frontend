@@ -27,6 +27,7 @@ if (isset($_POST['create_class'])) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Class</title>
     <link rel="stylesheet" href="create_class.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -37,6 +38,9 @@ if (isset($_POST['create_class'])) {
     <div class="logo">
         <a href="index.php"><img src="./assets/logo.png" alt="RentTracker"></a>
     </div>
+    <div class="menu-toggle" onclick="toggleMenu()">
+    <i class="fas fa-bars"></i>
+</div>
     <nav>
         <ul>
             <li><a href="create_class.php"><i class="fas fa-user-plus"></i> Invite</a></li>
@@ -69,5 +73,12 @@ if (isset($_POST['create_class'])) {
         <p>&copy; <?php echo date("Y"); ?> Rent & Utility Tracker. All rights reserved. Developed by Your Rentals Team</p>
     </div>
 </footer>
+<script>
+function toggleMenu() {
+    const nav = document.querySelector('nav ul');
+    nav.classList.toggle('show');
+}
+</script>
+
 </body>
 </html>

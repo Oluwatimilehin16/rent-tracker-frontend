@@ -9,6 +9,7 @@ body {
     min-height: 100vh;
     background-color: #f8f9fa;
     color: #333;
+    overflow-x: hidden;
 }
 
 /* Header */
@@ -506,6 +507,19 @@ footer {
         width: 100%;
         text-align: center;
         margin: 5px 0;
+    }
+       .bills-table table {
+        min-width: unset;
+        font-size: 14px;
+    }
+
+    .content-wrapper {
+        padding: 15px;
+        overflow-x: hidden;
+    }
+
+    body {
+        overflow-x: hidden;
     }
 }
 @media (max-width: 600px) {

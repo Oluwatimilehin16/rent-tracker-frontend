@@ -72,7 +72,10 @@ $total_messages = $message_data['message_count'] ?? 0;
     <div class="logo">
         <a href="index.php"><img src="./assets/logo.png" alt="RentTracker"></a>
     </div>
-    <nav>
+    <div class="hamburger" onclick="toggleMenu()">
+    <i class="fas fa-bars"></i>
+</div>
+    <nav id="main-nav">
          <ul>
             <li><a href="create_class.php"><i class="fas fa-user-plus"></i> Invite</a></li>
             <li><a href="add_bill.php"><i class="fas fa-plus-circle"></i> Add Bill</a></li>
@@ -252,6 +255,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+function toggleMenu() {
+        document.getElementById('main-nav').classList.toggle('active');
+    }
 </script>
 
 </body>
