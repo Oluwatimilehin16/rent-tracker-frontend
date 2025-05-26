@@ -162,7 +162,7 @@ $members_query = mysqli_query($conn, "
     // ✅ Join group
     socket.emit("join-group", groupId);
 
-    // ✅ Auto-resize textarea and typing indicator
+    // ✅ Auto-resize and typing indicator
     messageInput.addEventListener("input", function () {
         this.style.height = 'auto';
         this.style.height = this.scrollHeight + 'px';
@@ -179,7 +179,6 @@ $members_query = mysqli_query($conn, "
         }, 1000);
     });
 
-    // ✅ Send on Enter
     messageInput.addEventListener("keydown", function (e) {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -187,10 +186,8 @@ $members_query = mysqli_query($conn, "
         }
     });
 
-    // ✅ Send on button click
     sendBtn.addEventListener("click", sendMessage);
 
-    // ✅ Send message function
     function sendMessage() {
         const msg = messageInput.value.trim();
         if (!msg) return;
@@ -216,29 +213,26 @@ $members_query = mysqli_query($conn, "
         setTimeout(() => sendBtn.disabled = false, 300);
     }
 
-    // ✅ Format time nicely
     function formatLocalTime(utcString) {
         const date = new Date(utcString);
         const now = new Date();
         const diffInHours = (now - date) / (1000 * 60 * 60);
-        if (diffInHours < 24) {
-            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        } else {
-            return date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' +
-                date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        }
+        return diffInHours < 24
+            ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
 
-    // ✅ Group logic
     function shouldGroupMessage(data) {
         if (!lastMessageSender) return false;
         const currentTime = new Date(data.timestamp);
-        const timeDiff = (currentTime - lastMessageTime) / (1000 * 60); // minutes
+        const timeDiff = (currentTime - lastMessageTime) / (1000 * 60); // in minutes
         return lastMessageSender === data.sender_id && timeDiff < 5;
     }
 
-    // ✅ Append message
     function appendMessage(data) {
+        // Prevent duplicates
+        if (allMessages.find(msg => msg.timestamp === data.timestamp && msg.sender_id === data.sender_id && msg.message === data.message)) return;
+
         allMessages.push(data);
 
         const isMe = data.sender_id == senderId;
@@ -248,6 +242,9 @@ $members_query = mysqli_query($conn, "
         const messageDiv = document.createElement("div");
         messageDiv.classList.add("message");
         if (isMe) messageDiv.classList.add("me");
+
+        const msgId = `msg-${allMessages.length}`;
+        messageDiv.id = msgId;
 
         if (isMe) {
             messageDiv.innerHTML = `
@@ -267,7 +264,6 @@ $members_query = mysqli_query($conn, "
             `;
         }
 
-        // Handle grouping
         const lastGroup = chatBox.lastElementChild;
         if (isGrouped && lastGroup && lastGroup.getAttribute("data-sender") === data.sender_id.toString()) {
             lastGroup.appendChild(messageDiv);
@@ -285,7 +281,8 @@ $members_query = mysqli_query($conn, "
         setTimeout(() => chatBox.scrollTop = chatBox.scrollHeight, 0);
     }
 
-    // ✅ Typing
+    socket.on("group-message", appendMessage);
+
     socket.on("user-typing", (data) => {
         if (data.sender_name !== senderName) {
             typingIndicator.textContent = `${data.sender_name} is typing...`;
@@ -297,7 +294,6 @@ $members_query = mysqli_query($conn, "
         typingIndicator.classList.add("hidden");
     });
 
-    // ✅ Search
     function toggleSearch() {
         searchContainer.classList.toggle("hidden");
         if (!searchContainer.classList.contains("hidden")) {
@@ -317,10 +313,10 @@ $members_query = mysqli_query($conn, "
             return;
         }
 
-        const results = allMessages.filter(msg =>
-            msg.message.toLowerCase().includes(query) ||
-            msg.sender_name.toLowerCase().includes(query)
-        ).slice(0, 10);
+        const results = allMessages
+            .map((msg, i) => ({ ...msg, index: i }))
+            .filter(msg => msg.message.toLowerCase().includes(query) || msg.sender_name.toLowerCase().includes(query))
+            .slice(0, 10);
 
         if (results.length > 0) {
             searchResults.style.display = "block";
@@ -332,9 +328,14 @@ $members_query = mysqli_query($conn, "
                     <div style="font-size: 0.8em; color: #666;">${formatLocalTime(result.timestamp)}</div>
                 `;
                 div.addEventListener("click", () => {
+                    const target = document.getElementById(`msg-${result.index + 1}`);
+                    if (target) {
+                        chatBox.scrollTop = target.offsetTop - 50;
+                        target.classList.add("highlight");
+                        setTimeout(() => target.classList.remove("highlight"), 2000);
+                    }
                     searchResults.style.display = "none";
                     searchInput.value = "";
-                    // Optional: Scroll to actual message by implementing highlight logic
                 });
                 searchResults.appendChild(div);
             });
@@ -343,7 +344,6 @@ $members_query = mysqli_query($conn, "
         }
     });
 
-    // ✅ Clear visual chat
     function clearChat() {
         if (confirm("Clear chat history? (This only clears your view, not the actual messages)")) {
             chatBox.innerHTML = "";
@@ -353,7 +353,6 @@ $members_query = mysqli_query($conn, "
         }
     }
 
-    // ✅ Sidebar toggle
     function toggleSidebar() {
         const sidebar = document.getElementById("sidebar");
         const toggleBtn = document.getElementById("toggleBtn");
@@ -361,8 +360,7 @@ $members_query = mysqli_query($conn, "
         toggleBtn.textContent = sidebar.classList.contains("hidden") ? "Show" : "Hide";
     }
 
-    // ✅ Load past messages
-    window.onload = function () {
+    function loadPastMessages() {
         fetch(`fetch_group_messages.php?group_id=${groupId}`)
             .then(res => res.json())
             .then(messages => {
@@ -371,20 +369,19 @@ $members_query = mysqli_query($conn, "
 
                 const onlineCount = document.getElementById("onlineCount");
                 if (onlineCount) {
-                    onlineCount.textContent = `${document.querySelectorAll(".member-item").length} members`;
+                    const count = document.querySelectorAll(".member-item").length;
+                    onlineCount.textContent = `${count} member${count !== 1 ? 's' : ''}`;
                 }
             })
             .catch(err => {
                 console.error("Error loading messages:", err);
                 chatBox.innerHTML = '<div class="text-center text-muted">Failed to load messages</div>';
             });
-    };
+    }
 
-    // ✅ Real-time message listener
-    socket.on("group-message", appendMessage);
+    window.onload = loadPastMessages;
 
-    // ✅ Window resize fixes
-    window.addEventListener("resize", function () {
+    window.addEventListener("resize", () => {
         if (window.innerWidth > 768) {
             const sidebar = document.getElementById("sidebar");
             sidebar.classList.remove("hidden");
@@ -392,13 +389,11 @@ $members_query = mysqli_query($conn, "
         }
     });
 
-    // ✅ Close search when clicking outside
     document.addEventListener("click", function (e) {
         if (!searchContainer.contains(e.target) && !searchInput.contains(e.target)) {
             searchResults.style.display = "none";
         }
     });
 </script>
-
 </body>
 </html>
