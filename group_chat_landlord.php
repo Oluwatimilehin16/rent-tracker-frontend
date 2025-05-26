@@ -123,9 +123,10 @@ $members_query = mysqli_query($conn, "
     </div>
 </div>
 
+<!-- ✅ Socket.IO -->
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script>
-    const socket = io("https://rent-tracker-backend.onrender.com");
+    const socket = io("http://localhost:3000"); // Update this for production
     const groupId = <?php echo $group_id; ?>;
     const senderId = <?php echo $landlord_id; ?>;
     const senderName = <?php echo json_encode($landlord_name); ?>;
@@ -162,16 +163,17 @@ $members_query = mysqli_query($conn, "
     // ✅ Join group
     socket.emit("join-group", groupId);
 
-    // ✅ Auto-resize and typing indicator
-    messageInput.addEventListener("input", function () {
+    // ✅ Auto-resize textarea
+    messageInput.addEventListener('input', function() {
         this.style.height = 'auto';
-        this.style.height = this.scrollHeight + 'px';
-
+        this.style.height = (this.scrollHeight) + 'px';
+        
+        // Typing indicator
         if (!isTyping) {
             isTyping = true;
             socket.emit("typing-start", { group_id: groupId, sender_name: senderName });
         }
-
+        
         clearTimeout(typingTimeout);
         typingTimeout = setTimeout(() => {
             isTyping = false;
@@ -179,6 +181,7 @@ $members_query = mysqli_query($conn, "
         }, 1000);
     });
 
+    // ✅ Send on Enter (without Shift)
     messageInput.addEventListener("keydown", function (e) {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -186,14 +189,13 @@ $members_query = mysqli_query($conn, "
         }
     });
 
-    sendBtn.addEventListener("click", sendMessage);
-
+    // ✅ Send message
     function sendMessage() {
         const msg = messageInput.value.trim();
         if (!msg) return;
 
         sendBtn.disabled = true;
-
+        
         socket.emit("send-group-message", {
             group_id: groupId,
             sender_id: senderId,
@@ -204,47 +206,59 @@ $members_query = mysqli_query($conn, "
 
         messageInput.value = "";
         messageInput.style.height = 'auto';
-
+        
+        // Stop typing indicator
         if (isTyping) {
             isTyping = false;
             socket.emit("typing-stop", { group_id: groupId });
         }
-
-        setTimeout(() => sendBtn.disabled = false, 300);
+        
+        setTimeout(() => sendBtn.disabled = false, 500);
     }
 
+    // ✅ Format time
     function formatLocalTime(utcString) {
         const date = new Date(utcString);
         const now = new Date();
         const diffInHours = (now - date) / (1000 * 60 * 60);
-        return diffInHours < 24
-            ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            : date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        if (diffInHours < 24) {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } else {
+            return date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + 
+                   ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
     }
 
+    // ✅ Group consecutive messages
     function shouldGroupMessage(data) {
         if (!lastMessageSender) return false;
+        
         const currentTime = new Date(data.timestamp);
-        const timeDiff = (currentTime - lastMessageTime) / (1000 * 60); // in minutes
+        const timeDiff = (currentTime - lastMessageTime) / (1000 * 60); // minutes
+        
         return lastMessageSender === data.sender_id && timeDiff < 5;
     }
 
+    // ✅ Append message with grouping
     function appendMessage(data) {
-        // Prevent duplicates
-        if (allMessages.find(msg => msg.timestamp === data.timestamp && msg.sender_id === data.sender_id && msg.message === data.message)) return;
-
         allMessages.push(data);
-
+        
         const isMe = data.sender_id == senderId;
         const isGrouped = shouldGroupMessage(data);
         const time = formatLocalTime(data.timestamp);
 
+        if (!isGrouped) {
+            // Create new message group
+            const groupDiv = document.createElement("div");
+            groupDiv.classList.add("message-group");
+            groupDiv.setAttribute("data-sender", data.sender_id);
+            chatBox.appendChild(groupDiv);
+        }
+
         const messageDiv = document.createElement("div");
         messageDiv.classList.add("message");
         if (isMe) messageDiv.classList.add("me");
-
-        const msgId = `msg-${allMessages.length}`;
-        messageDiv.id = msgId;
 
         if (isMe) {
             messageDiv.innerHTML = `
@@ -264,8 +278,9 @@ $members_query = mysqli_query($conn, "
             `;
         }
 
+        // Add to the last message group or create new one
         const lastGroup = chatBox.lastElementChild;
-        if (isGrouped && lastGroup && lastGroup.getAttribute("data-sender") === data.sender_id.toString()) {
+        if (lastGroup && lastGroup.getAttribute("data-sender") === data.sender_id.toString() && isGrouped) {
             lastGroup.appendChild(messageDiv);
         } else {
             const newGroup = document.createElement("div");
@@ -277,15 +292,11 @@ $members_query = mysqli_query($conn, "
 
         lastMessageSender = data.sender_id;
         lastMessageTime = new Date(data.timestamp);
-
-        setTimeout(() => chatBox.scrollTop = chatBox.scrollHeight, 0);
+        
+        chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-   socket.on("group-message", (data) => {
-    console.log("Received new group message:", data);
-    appendMessage(data);
-});
-
+    // ✅ Typing indicators
     socket.on("user-typing", (data) => {
         if (data.sender_name !== senderName) {
             typingIndicator.textContent = `${data.sender_name} is typing...`;
@@ -297,6 +308,7 @@ $members_query = mysqli_query($conn, "
         typingIndicator.classList.add("hidden");
     });
 
+    // ✅ Search functionality
     function toggleSearch() {
         searchContainer.classList.toggle("hidden");
         if (!searchContainer.classList.contains("hidden")) {
@@ -307,19 +319,19 @@ $members_query = mysqli_query($conn, "
         }
     }
 
-    searchInput.addEventListener("input", function () {
+    searchInput.addEventListener("input", function() {
         const query = this.value.toLowerCase().trim();
         searchResults.innerHTML = "";
-
+        
         if (query.length < 2) {
             searchResults.style.display = "none";
             return;
         }
 
-        const results = allMessages
-            .map((msg, i) => ({ ...msg, index: i }))
-            .filter(msg => msg.message.toLowerCase().includes(query) || msg.sender_name.toLowerCase().includes(query))
-            .slice(0, 10);
+        const results = allMessages.filter(msg => 
+            msg.message.toLowerCase().includes(query) || 
+            msg.sender_name.toLowerCase().includes(query)
+        ).slice(0, 10);
 
         if (results.length > 0) {
             searchResults.style.display = "block";
@@ -331,12 +343,7 @@ $members_query = mysqli_query($conn, "
                     <div style="font-size: 0.8em; color: #666;">${formatLocalTime(result.timestamp)}</div>
                 `;
                 div.addEventListener("click", () => {
-                    const target = document.getElementById(`msg-${result.index + 1}`);
-                    if (target) {
-                        chatBox.scrollTop = target.offsetTop - 50;
-                        target.classList.add("highlight");
-                        setTimeout(() => target.classList.remove("highlight"), 2000);
-                    }
+                    // Highlight the message (you can implement scrolling to message here)
                     searchResults.style.display = "none";
                     searchInput.value = "";
                 });
@@ -347,6 +354,7 @@ $members_query = mysqli_query($conn, "
         }
     });
 
+    // ✅ Clear chat (visual only)
     function clearChat() {
         if (confirm("Clear chat history? (This only clears your view, not the actual messages)")) {
             chatBox.innerHTML = "";
@@ -356,47 +364,55 @@ $members_query = mysqli_query($conn, "
         }
     }
 
+    // ✅ Toggle sidebar
     function toggleSidebar() {
-        const sidebar = document.getElementById("sidebar");
-        const toggleBtn = document.getElementById("toggleBtn");
-        sidebar.classList.toggle("hidden");
-        toggleBtn.textContent = sidebar.classList.contains("hidden") ? "Show" : "Hide";
-    }
+    const sidebar = document.getElementById("sidebar");
+    const toggleBtn = document.getElementById("toggleBtn");
 
-    function loadPastMessages() {
+    // Toggle "hidden" class instead of manually setting display styles
+    sidebar.classList.toggle("hidden");
+    toggleBtn.textContent = sidebar.classList.contains("hidden") ? "Show" : "Hide";
+}
+
+
+    // ✅ Load past messages
+    window.onload = function () {
         fetch(`fetch_group_messages.php?group_id=${groupId}`)
-            .then(res => res.json())
+            .then(response => response.json())
             .then(messages => {
                 messages.forEach(appendMessage);
-                setTimeout(() => chatBox.scrollTop = chatBox.scrollHeight, 0);
-
-                const onlineCount = document.getElementById("onlineCount");
-                if (onlineCount) {
-                    const count = document.querySelectorAll(".member-item").length;
-                    onlineCount.textContent = `${count} member${count !== 1 ? 's' : ''}`;
-                }
+                chatBox.scrollTop = chatBox.scrollHeight;
+                
+                // Update online count
+                document.getElementById("onlineCount").textContent = 
+                    `${document.querySelectorAll('.member-item').length} members`;
             })
-            .catch(err => {
-                console.error("Error loading messages:", err);
+            .catch(error => {
+                console.error('Error loading messages:', error);
                 chatBox.innerHTML = '<div class="text-center text-muted">Failed to load messages</div>';
             });
-    }
+    };
 
-    window.onload = loadPastMessages;
+    // ✅ Real-time message receive
+    socket.on("group-message", data => {
+        appendMessage(data);
+    });
 
-    window.addEventListener("resize", () => {
+    // ✅ Handle window resize
+    window.addEventListener("resize", function() {
         if (window.innerWidth > 768) {
-            const sidebar = document.getElementById("sidebar");
-            sidebar.classList.remove("hidden");
-            sidebar.style.display = "flex";
+            document.getElementById("sidebar").classList.remove("hidden");
+            document.getElementById("sidebar").style.display = "flex";
         }
     });
 
-    document.addEventListener("click", function (e) {
-        if (!searchContainer.contains(e.target) && !searchInput.contains(e.target)) {
+    // ✅ Click outside to close search
+    document.addEventListener("click", function(e) {
+        if (!searchContainer.contains(e.target)) {
             searchResults.style.display = "none";
         }
     });
 </script>
+
 </body>
 </html>
