@@ -33,6 +33,17 @@ header {
 header .logo img {
     width: 95px;
 }
+.hamburger {
+    display: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: white;
+}
+
+/* Mobile nav menu hidden by default */
+#main-nav {
+    transition: max-height 0.3s ease-in-out;
+}
 
 nav ul {
     display: flex;
@@ -226,31 +237,63 @@ footer {
 }
 
 /* Responsive Design Adjustments */
-@media screen and (max-width: 768px) {
-    .add-bill-container {
-        padding: 30px;
-        margin-top: 90px;
+
+@media (max-width: 768px) {
+    header {
+        flex-wrap: wrap;
     }
 
-    header .header-content {
+    .hamburger {
+        display: block;
+    }
+
+    nav {
+        width: 100%;
+        background-color: #218838;
+    }
+
+    nav ul {
         flex-direction: column;
-        align-items: flex-start;
+        overflow: hidden;
+        max-height: 0;
+        padding-left: 0;
     }
 
-    header nav {
-        margin-top: 15px;
+    nav.active ul,
+    nav#main-nav.active ul {
+        max-height: 500px; /* Enough height for nav items */
+        padding: 10px 0;
     }
 
-    header nav ul {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    header nav ul li {
+    nav ul li {
         margin: 10px 0;
+        text-align: center;
+    }
+
+    .add-bill-container {
+        padding: 20px 10px;
+    }
+
+    .content-wrapper {
+        padding: 20px;
+        width: 100%;
+    }
+
+    h2 {
+        font-size: 1.5em;
     }
 
     .add-bill-form {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr !important;
+    }
+
+    footer {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .footer-content {
+        flex-direction: column;
+        gap: 5px;
     }
 }

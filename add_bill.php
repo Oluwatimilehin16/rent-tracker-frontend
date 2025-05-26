@@ -41,6 +41,7 @@ if (isset($_POST['submit'])) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Add Bill - Rent & Utility Tracker</title>
     <link rel="stylesheet" href="add_bill.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -51,7 +52,10 @@ if (isset($_POST['submit'])) {
     <div class="logo">
         <a href="index.php"><img src="./assets/logo.png" alt="RentTracker"></a>
     </div>
-    <nav>
+    <div class="hamburger" onclick="toggleMenu()">
+    <i class="fas fa-bars"></i>
+</div>
+    <nav id="main-nav"> 
         <ul>
             <li><a href="create_class.php"><i class="fas fa-user-plus"></i> Invite</a></li>
             <li><a href="add_bill.php" class="active"><i class="fas fa-plus-circle"></i> Add Bill</a></li>
@@ -118,6 +122,11 @@ if (isset($_POST['submit'])) {
 </footer>
 
 <script>
+    
+    function toggleMenu() {
+        document.getElementById('main-nav').classList.toggle('active');
+    }
+
     // Toggle visibility of 'Other' input
     document.getElementById('bill_name').addEventListener('change', function () {
         document.getElementById('other_bill_name_group').style.display = (this.value === 'other') ? 'block' : 'none';
