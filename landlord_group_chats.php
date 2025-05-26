@@ -69,22 +69,25 @@ $total_messages = $message_data['message_count'] ?? 0;
 <body>
 
 <header>
+  <div class="top-bar">
     <div class="logo">
-        <a href="index.php"><img src="./assets/logo.png" alt="RentTracker"></a>
+      <a href="index.php"><img src="./assets/logo.png" alt="RentTracker"></a>
     </div>
     <div class="hamburger" onclick="toggleMenu()">
-    <i class="fas fa-bars"></i>
-</div>
-    <nav id="main-nav">
-         <ul>
-            <li><a href="create_class.php"><i class="fas fa-user-plus"></i> Invite</a></li>
-            <li><a href="add_bill.php"><i class="fas fa-plus-circle"></i> Add Bill</a></li>
-            <li><a href="view_bills.php"><i class="fas fa-list-alt"></i> View Bills</a></li>
-            <li><a href="create_groupchat.php" class="active"><i class="fas fa-users"></i> Create group chat</a></li>
-            <li><a href="landlord_group_chats.php">💬 View My Group Chats</a></li>
-            <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
-        </ul>
-    </nav>
+      <i class="fas fa-bars"></i>
+    </div>
+  </div>
+
+  <nav id="main-nav">
+    <ul>
+      <li><a href="create_class.php"><i class="fas fa-user-plus"></i> Invite</a></li>
+      <li><a href="add_bill.php"><i class="fas fa-plus-circle"></i> Add Bill</a></li>
+      <li><a href="view_bills.php"><i class="fas fa-list-alt"></i> View Bills</a></li>
+      <li><a href="create_groupchat.php" class="active"><i class="fas fa-users"></i> Create group chat</a></li>
+      <li><a href="landlord_group_chats.php">💬 View My Group Chats</a></li>
+      <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+    </ul>
+  </nav>
 </header>
 
 <div class="container">
