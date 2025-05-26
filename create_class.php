@@ -75,8 +75,8 @@ if (isset($_POST['create_class'])) {
 </footer>
 <script>
 function toggleMenu() {
-    const nav = document.querySelector('nav ul');
-    nav.classList.toggle('show');
+    const navList = document.querySelector('nav ul');
+    navList.classList.toggle('show');
 }
 </script>
 

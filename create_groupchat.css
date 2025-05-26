@@ -185,17 +185,34 @@
         .footer-content p{
             color:#fff;
         }
+@media (max-width: 768px) {
+    header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
 
-        @media (max-width: 768px) {
-    /* Stack nav links vertically for mobile */
+    .menu-toggle {
+        display: block;
+        align-self: flex-end;
+        margin-top: 5px;
+        font-size: 28px;
+        padding: 10px;
+    }
+
     nav ul {
         flex-direction: column;
+        width: 100%;
+        display: none;
         background-color: #218838;
+        padding: 10px 0;
         position: absolute;
         top: 60px;
-        right: 0;
-        width: 100%;
-        display: none; /* Optional: for hamburger menu behavior */
+        left: 0;
+        z-index: 1000;
+    }
+
+    nav ul.show {
+        display: flex;
     }
 
     nav ul li {
@@ -203,18 +220,33 @@
         text-align: center;
     }
 
-    header {
+    .content-wrapper {
+        padding: 100px 15px 20px;
         flex-direction: column;
-        align-items: flex-start;
-    }
-    .menu-toggle {
-        display: block;
-        align-self: flex-end;
-        margin-top: 5px;
+        align-items: center;
     }
 
-    nav ul.show {
-        display: flex;
+    .container {
+        width: 100%;
+        padding: 30px 20px;
+        border-radius: 0;
     }
 
+    form input[type="text"],
+    form button {
+        font-size: 14px;
+    }
+
+    .checkboxes {
+        font-size: 14px;
+        max-height: 140px;
+    }
+
+    h1 {
+        font-size: 22px;
+    }
+
+    p {
+        font-size: 13px;
+    }
 }
