@@ -281,8 +281,10 @@ $members_query = mysqli_query($conn, "
         setTimeout(() => chatBox.scrollTop = chatBox.scrollHeight, 0);
     }
 
-    socket.on("group-message", appendMessage);
-     console.log("Received new group message:", appendMessage);
+   socket.on("group-message", (data) => {
+    console.log("Received new group message:", data);
+    appendMessage(data);
+});
 
     socket.on("user-typing", (data) => {
         if (data.sender_name !== senderName) {
