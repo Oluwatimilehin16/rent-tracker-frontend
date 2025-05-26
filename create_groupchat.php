@@ -52,6 +52,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="logo">
         <a href="index.php"><img src="./assets/logo.png" alt="RentTracker"></a>
     </div>
+    <div class="menu-toggle" onclick="toggleMenu()">
+    <i class="fas fa-bars"></i>
+</div>
     <nav>
         <ul>
             <li><a href="create_class.php"><i class="fas fa-user-plus"></i> Invite</a></li>
@@ -94,7 +97,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script>
-  const socket = io('https://rent-tracker-backend.onrender.com'); // Or use your server IP if hosting externally
+  const socket = io('https://rent-tracker-backend.onrender.com'); 
+  function toggleMenu() {
+    const nav = document.querySelector('nav ul');
+    nav.classList.toggle('show');
+}
 </script>
 
 </body>
