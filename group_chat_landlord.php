@@ -282,6 +282,7 @@ $members_query = mysqli_query($conn, "
     }
 
     socket.on("group-message", appendMessage);
+     console.log("Received new group message:", appendMessage);
 
     socket.on("user-typing", (data) => {
         if (data.sender_name !== senderName) {
