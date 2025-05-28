@@ -98,9 +98,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script>
   const socket = io('https://rent-tracker-backend.onrender.com'); 
-  function toggleMenu() {
-    const nav = document.querySelector('nav ul');
-    nav.classList.toggle('show');
+ function toggleMenu() {
+    const nav = document.querySelector('nav');     
+    nav.classList.toggle('show');                  
 }
 </script>
 

@@ -1,5 +1,4 @@
-
-        * {
+* {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -54,17 +53,22 @@
             color: #ecc700;
             background-color: rgba(255,255,255,0.1);
         }
-        .hamburger {
-    display: none;
-    font-size: 24px;
-    cursor: pointer;
-    color: white;
-}
 
-/* Mobile nav menu hidden by default */
-#main-nav {
-    transition: max-height 0.3s ease-in-out;
-}
+        /* Hamburger menu - hidden by default on desktop */
+        .hamburger {
+            display: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: white;
+            padding: 10px;
+            background: none;
+            border: none;
+        }
+
+        /* Main navigation - visible by default on desktop */
+        #main-nav {
+            display: flex;
+        }
 
         .container {
             max-width: 1200px;
@@ -426,7 +430,10 @@
             border-top: 1px solid #e0e0e0;
         }
 
-        @media (max-width: 768px) {
+        /* ===== MOBILE RESPONSIVENESS ===== */
+
+        /* Tablet styles */
+        @media (max-width: 968px) {
             .dashboard-header {
                 flex-direction: column;
                 gap: 20px;
@@ -434,15 +441,12 @@
             }
 
             .welcome-section {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 10px;
+                width: 100%;
             }
 
-            .summary {
-                flex-direction: column;
-                gap: 15px;
-                align-items: flex-start;
+            .create-btn {
+                width: 100%;
+                justify-content: center;
             }
 
             .filter-sort {
@@ -458,88 +462,270 @@
 
             .sort-options {
                 width: 100%;
-                justify-content: space-between;
+                justify-content: flex-start;
+                flex-wrap: wrap;
             }
         }
 
-        @media (max-width: 600px) {
-            header {
+        /* Mobile styles */
+        @media (max-width: 768px) {
+            /* Show hamburger, hide desktop nav */
+            .hamburger {
+                display: block;
+            }
+
+            /* Hide nav by default on mobile */
+            #main-nav {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                width: 100%;
+                background-color: #218838;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            }
+
+            /* Show nav when active class is added */
+            #main-nav.active {
+                display: block;
+            }
+
+            /* Stack nav items vertically */
+            #main-nav ul {
                 flex-direction: column;
+                padding: 10px 0;
+            }
+
+            #main-nav ul li {
+                margin: 0;
+                width: 100%;
+            }
+
+            #main-nav ul li a {
+                display: block;
+                padding: 15px 20px;
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+                transition: background-color 0.2s ease;
+            }
+
+            #main-nav ul li:last-child a {
+                border-bottom: none;
+            }
+
+            #main-nav ul li a:hover {
+                background-color: rgba(255,255,255,0.1);
+            }
+
+            /* Adjust container for mobile */
+            .container {
+                margin-top: 70px;
+                padding: 0 15px;
+            }
+
+            /* Mobile header adjustments */
+            header {
+                padding: 10px 15px;
+            }
+
+            header .logo img {
+                width: 80px;
+            }
+
+            /* Dashboard header mobile */
+            .dashboard-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+
+            .welcome-section {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+                width: 100%;
+            }
+
+            .welcome-section .avatar {
+                width: 50px;
+                height: 50px;
+                font-size: 18px;
+            }
+
+            .welcome-text h1 {
+                font-size: 20px;
+            }
+
+            .welcome-text p {
+                font-size: 14px;
+            }
+
+            /* Stats container mobile */
+            .stats-container {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .stat-card {
                 padding: 15px;
             }
 
-            nav ul {
+            .stat-card i {
+                font-size: 24px;
+            }
+
+            .stat-card .stat-value {
+                font-size: 24px;
+            }
+
+            /* Summary mobile */
+            .summary {
                 flex-direction: column;
-                gap: 10px;
-                margin-top: 15px;
-                width: 100%;
-            }
-
-            nav ul li {
-                width: 100%;
-            }
-
-            nav ul li a {
-                display: block;
-                text-align: center;
-                padding: 10px 0;
+                gap: 15px;
+                align-items: flex-start;
+                padding: 20px;
             }
 
             .summary h2 {
                 font-size: 18px;
             }
 
+            .summary-text {
+                font-size: 14px;
+            }
+
+            /* Filter sort mobile */
+            .filter-sort {
+                flex-direction: column;
+                gap: 15px;
+                align-items: stretch;
+            }
+
+            .search-box {
+                max-width: 100%;
+            }
+
+            .sort-options {
+                justify-content: space-between;
+                gap: 8px;
+            }
+
+            .sort-btn {
+                flex: 1;
+                padding: 10px 8px;
+                font-size: 12px;
+                text-align: center;
+            }
+
+            /* Chat grid mobile */
+            .chat-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .chat-card {
+                margin-bottom: 0;
+            }
+
+            .chat-header {
+                padding: 12px 15px;
+            }
+
+            .chat-title {
+                font-size: 16px;
+                margin-bottom: 3px;
+            }
+
+            .chat-content {
+                padding: 15px;
+            }
+
             .chat-stats {
-                gap: 10px;
+                gap: 15px;
+                margin-bottom: 15px;
+            }
+
+            .chat-stat-value {
+                font-size: 18px;
+            }
+
+            .chat-actions {
+                gap: 8px;
+            }
+
+            .chat-btn {
+                padding: 10px 8px;
+                font-size: 14px;
+            }
+
+            /* No chats mobile */
+            .no-chats {
+                padding: 30px 20px;
+            }
+
+            .no-chats i {
+                font-size: 36px;
+            }
+
+            .no-chats h3 {
+                font-size: 18px;
+            }
+
+            .no-chats p {
+                font-size: 14px;
             }
         }
-        
-/* Only apply these rules for small screens */
-@media screen and (max-width: 768px) {
-    .hamburger {
-        display: block;
-        font-size: 24px;
-        cursor: pointer;
-        padding: 10px;
-        color: #333;
-    }
 
-    #main-nav {
-        display: none;
-        flex-direction: column;
-        background-color: #fff; /* Or match your theme */
-        width: 100%;
-    }
+        /* Small mobile devices */
+        @media (max-width: 480px) {
+            header {
+                padding: 8px 10px;
+            }
 
-    #main-nav.active {
-        display: flex;
-    }
+            header .logo img {
+                width: 70px;
+            }
 
-    #main-nav ul {
-        flex-direction: column;
-        padding: 0;
-        margin: 0;
-    }
+            .container {
+                padding: 0 10px;
+                margin-top: 65px;
+            }
 
-    #main-nav ul li {
-        width: 100%;
-        text-align: left;
-        border-bottom: 1px solid #ccc;
-    }
+            .welcome-text h1 {
+                font-size: 18px;
+            }
 
-    #main-nav ul li a {
-        display: block;
-        padding: 12px 16px;
-    }
-}
+            .create-btn {
+                padding: 10px 15px;
+                font-size: 14px;
+            }
 
-/* For larger screens, always show nav and hide hamburger */
-@media screen and (min-width: 769px) {
-    .hamburger {
-        display: none;
-    }
+            .stats-container {
+                gap: 10px;
+            }
 
-    #main-nav {
-        display: flex !important;
-    }
-}
+            .stat-card {
+                padding: 12px;
+            }
+
+            .sort-options {
+                gap: 5px;
+            }
+
+            .sort-btn {
+                padding: 8px 6px;
+                font-size: 11px;
+            }
+
+            .chat-header {
+                padding: 10px 12px;
+            }
+
+            .chat-content {
+                padding: 12px;
+            }
+
+            .chat-badge {
+                font-size: 10px;
+                padding: 2px 6px;
+            }
+        }

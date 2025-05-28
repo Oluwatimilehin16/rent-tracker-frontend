@@ -118,7 +118,7 @@
                         </div>
                         <h3 class="blog-title">10 Essential Property Management Tips for New Landlords</h3>
                         <p class="blog-excerpt">Learn the fundamental strategies every new landlord should know to successfully manage their rental properties and maintain positive tenant relationships.</p>
-                        <a href="https://www.biggerpockets.com/blog/property-management-tips" target="_blank" class="blog-link">Read More →</a>
+                        <a href="https://www.bellastaging.ca/blogs/news/property-management-tips" target="_blank" class="blog-link">Read More →</a>
                     </div>
                 </article>
 
@@ -130,7 +130,7 @@
                         </div>
                         <h3 class="blog-title">How Digital Rent Tracking is Revolutionizing Property Management</h3>
                         <p class="blog-excerpt">Discover how modern landlords are using digital tools to streamline rent collection, reduce late payments, and improve tenant communication.</p>
-                        <a href="https://www.rentometer.com/blog/digital-rent-collection" target="_blank" class="blog-link">Read More →</a>
+                        <a href="https://www.porterhouseprop.com/post/unlocking-the-future-of-renting-discover-why-online-payments-are-a-game-changer-for-tenants-and-lan" target="_blank" class="blog-link">Read More →</a>
                     </div>
                 </article>
 
@@ -142,7 +142,7 @@
                         </div>
                         <h3 class="blog-title">Building Better Landlord-Tenant Relationships Through Communication</h3>
                         <p class="blog-excerpt">Effective communication strategies that help landlords maintain positive relationships with tenants while ensuring property standards are met.</p>
-                        <a href="https://www.apartments.com/blog/landlord-tenant-communication" target="_blank" class="blog-link">Read More →</a>
+                        <a href="https://www.elliotleigh.com/post/building-strong-landlord-tenant-relationships" target="_blank" class="blog-link">Read More →</a>
                     </div>
                 </article>
             </div>
