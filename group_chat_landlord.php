@@ -149,23 +149,32 @@ $members_query = mysqli_query($conn, "
     let lastMessageTime = null;
 
     // ✅ Step 1: Confirm connection
-    socket.on("connect", () => {
-        console.log("✅ Connected to Socket.IO server");
-        connectionStatus.textContent = "Connected";
-        connectionStatus.className = "connection-status connected";
-        setTimeout(() => connectionStatus.style.display = "none", 3000);
-    });
+socket.on("connect", () => {
+    console.log("✅ Connected to Socket.IO server, ID:", socket.id);
+    connectionStatus.textContent = "Connected";
+    connectionStatus.className = "connection-status connected";
+    setTimeout(() => connectionStatus.style.display = "none", 3000);
+});
 
-    socket.on("disconnect", () => {
-        console.log("⚠️ Disconnected from Socket.IO server");
-        connectionStatus.textContent = "Disconnected";
-        connectionStatus.className = "connection-status disconnected";
-        connectionStatus.style.display = "block";
-    });
+socket.on("disconnect", (reason) => {
+    console.log("❌ Disconnected from server. Reason:", reason);
+    connectionStatus.textContent = "Disconnected";
+    connectionStatus.className = "connection-status disconnected";
+    connectionStatus.style.display = "block";
+});
 
-    // ✅ Step 2: Join group
-    socket.emit("join-group", groupId);
-    console.log("📡 Joining group:", groupId);
+socket.on("connect_error", (error) => {
+    console.error("🔌 Connection error:", error);
+});
+
+socket.on("error", (error) => {
+    console.error("❌ Socket error:", error);
+    alert("Error: " + error.message);
+});
+
+// ✅ Join group with confirmation
+socket.emit("join-group", groupId);
+console.log("📡 Attempting to join group:", groupId);
 
     // ✅ Typing indicator
     messageInput.addEventListener('input', function () {
@@ -193,31 +202,72 @@ $members_query = mysqli_query($conn, "
 
     // ✅ Step 3: Send message
     function sendMessage() {
-        const msg = messageInput.value.trim();
-        if (!msg) return;
-
-        console.log("📤 Sending message:", msg);
-        sendBtn.disabled = true;
-
-        socket.emit("send-group-message", {
-            group_id: groupId,
-            sender_id: senderId,
-            sender_name: senderName,
-            sender_role: senderRole,
-            message: msg
-        });
-
-        messageInput.value = "";
-        messageInput.style.height = 'auto';
-
-        if (isTyping) {
-            isTyping = false;
-            socket.emit("typing-stop", { group_id: groupId });
-        }
-
-        setTimeout(() => sendBtn.disabled = false, 500);
+    const msg = messageInput.value.trim();
+    if (!msg) {
+        console.log("⚠️ Empty message, not sending");
+        return;
     }
 
+    if (!socket.connected) {
+        console.error("❌ Socket not connected");
+        alert("Not connected to server. Please refresh the page.");
+        return;
+    }
+
+    console.log("📤 PREPARING TO SEND MESSAGE:", msg);
+    sendBtn.disabled = true;
+
+    const messageData = {
+        group_id: groupId,
+        sender_id: senderId,
+        sender_name: senderName,
+        sender_role: senderRole,
+        message: msg
+    };
+
+    console.log("📤 SENDING MESSAGE DATA:", messageData);
+    console.log("📊 Current connection status:", socket.connected);
+    console.log("📊 Group ID:", groupId, "Sender ID:", senderId);
+
+    socket.emit("send-group-message", messageData);
+
+    messageInput.value = "";
+    messageInput.style.height = 'auto';
+
+    if (isTyping) {
+        isTyping = false;
+        socket.emit("typing-stop", { group_id: groupId });
+    }
+
+    setTimeout(() => sendBtn.disabled = false, 1000);
+}
+
+// ✅ Enhanced message receive handling
+socket.on("group-message", data => {
+    console.log("📥 RECEIVED MESSAGE FROM SERVER:");
+    console.log("📋 Raw data:", data);
+    console.log("📋 Data type:", typeof data);
+    console.log("📋 Data structure:", JSON.stringify(data, null, 2));
+    
+    // Check if data is valid
+    if (!data) {
+        console.error("❌ Received null/undefined data");
+        return;
+    }
+    
+    if (!data.message) {
+        console.error("❌ Received data missing message field:", data);
+        return;
+    }
+    
+    if (!data.sender_id) {
+        console.error("❌ Received data missing sender_id field:", data);
+        return;
+    }
+    
+    console.log("✅ Message data validation passed, calling appendMessage");
+    appendMessage(data);
+});
     // ✅ Format timestamp
     function formatLocalTime(utcString) {
         const date = new Date(utcString);
@@ -238,51 +288,106 @@ $members_query = mysqli_query($conn, "
         return lastMessageSender === data.sender_id && timeDiff < 5;
     }
 
-    function appendMessage(data) {
-        console.log("📥 Received message:", data);
-        allMessages.push(data);
-
-        const isMe = data.sender_id == senderId;
-        const isGrouped = shouldGroupMessage(data);
-        const time = formatLocalTime(data.timestamp);
-
-        if (!isGrouped) {
-            const groupDiv = document.createElement("div");
-            groupDiv.classList.add("message-group");
-            groupDiv.setAttribute("data-sender", data.sender_id);
-            chatBox.appendChild(groupDiv);
-        }
-
-        const messageDiv = document.createElement("div");
-        messageDiv.classList.add("message");
-        if (isMe) messageDiv.classList.add("me");
-
-        messageDiv.innerHTML = isMe
-            ? `<div class="me-bubble">
-                   <div class="message-content">${data.message}</div>
-                   <div class="timestamp">${time} <span class="message-status">✓</span></div>
-               </div>`
-            : `<div class="other-bubble">
-                   ${!isGrouped ? `<div class="sender-name">${data.sender_name || "Someone"}</div>` : ''}
-                   <div class="message-content">${data.message}</div>
-                   <div class="timestamp">${time}</div>
-               </div>`;
-
-        const lastGroup = chatBox.lastElementChild;
-        if (lastGroup && lastGroup.getAttribute("data-sender") === data.sender_id.toString() && isGrouped) {
-            lastGroup.appendChild(messageDiv);
-        } else {
-            const newGroup = document.createElement("div");
-            newGroup.classList.add("message-group");
-            newGroup.setAttribute("data-sender", data.sender_id);
-            newGroup.appendChild(messageDiv);
-            chatBox.appendChild(newGroup);
-        }
-
-        lastMessageSender = data.sender_id;
-        lastMessageTime = new Date(data.timestamp);
-        chatBox.scrollTop = chatBox.scrollHeight;
+function appendMessage(data) {
+    console.log("📝 APPENDING MESSAGE TO UI:");
+    console.log("📋 Message content:", data.message);
+    console.log("📋 Sender ID:", data.sender_id, "Current user ID:", senderId);
+    console.log("📋 Timestamp:", data.timestamp);
+    
+    // Check for duplicates
+    const isDuplicate = allMessages.some(msg => 
+        msg.message === data.message && 
+        msg.sender_id === data.sender_id && 
+        Math.abs(new Date(msg.timestamp) - new Date(data.timestamp)) < 2000
+    );
+    
+    if (isDuplicate) {
+        console.log("🔄 Duplicate message detected, skipping");
+        return;
     }
+    
+    allMessages.push(data);
+    console.log("📊 Total messages now:", allMessages.length);
+
+    const isMe = data.sender_id == senderId;
+    const isGrouped = shouldGroupMessage(data);
+    const time = formatLocalTime(data.timestamp);
+
+    console.log("📋 Message properties:", { isMe, isGrouped, time });
+
+    const messageDiv = document.createElement("div");
+    messageDiv.classList.add("message");
+    if (isMe) messageDiv.classList.add("me");
+
+    const messageHTML = isMe
+        ? `<div class="me-bubble">
+               <div class="message-content">${escapeHtml(data.message)}</div>
+               <div class="timestamp">${time} <span class="message-status">✓</span></div>
+           </div>`
+        : `<div class="other-bubble">
+               ${!isGrouped ? `<div class="sender-name">${escapeHtml(data.sender_name || "Someone")}</div>` : ''}
+               <div class="message-content">${escapeHtml(data.message)}</div>
+               <div class="timestamp">${time}</div>
+           </div>`;
+
+    messageDiv.innerHTML = messageHTML;
+    console.log("📋 Generated HTML:", messageHTML);
+
+    // Add to chat
+    const lastGroup = chatBox.lastElementChild;
+    if (lastGroup && lastGroup.getAttribute("data-sender") === data.sender_id.toString() && isGrouped) {
+        lastGroup.appendChild(messageDiv);
+        console.log("📎 Added to existing message group");
+    } else {
+        const newGroup = document.createElement("div");
+        newGroup.classList.add("message-group");
+        newGroup.setAttribute("data-sender", data.sender_id);
+        newGroup.appendChild(messageDiv);
+        chatBox.appendChild(newGroup);
+        console.log("📎 Created new message group");
+    }
+
+    lastMessageSender = data.sender_id;
+    lastMessageTime = new Date(data.timestamp);
+    
+    console.log("📊 Chat box children count:", chatBox.children.length);
+    console.log("📊 Scrolling to bottom");
+    chatBox.scrollTop = chatBox.scrollHeight;
+    
+    console.log("✅ MESSAGE SUCCESSFULLY ADDED TO UI");
+}
+
+// ✅ Add HTML escape function
+function escapeHtml(text) {
+    if (!text) return '';
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.toString().replace(/[&<>"']/g, function(m) { return map[m]; });
+}
+
+// ✅ Debug the chat box
+console.log("📊 Chat box element:", chatBox);
+console.log("📊 Chat box styles:", window.getComputedStyle(chatBox));
+
+// ✅ Test function - call this in console to verify message display
+window.testMessage = function() {
+    const testData = {
+        id: 999,
+        group_id: groupId,
+        sender_id: senderId,
+        sender_name: senderName,
+        sender_role: senderRole,
+        message: "Test message " + new Date().getTime(),
+        timestamp: new Date().toISOString()
+    };
+    console.log("🧪 Testing with fake message:", testData);
+    appendMessage(testData);
+};
 
     // ✅ Step 4: Receive message
     socket.on("group-message", data => {
