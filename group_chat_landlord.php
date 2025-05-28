@@ -126,8 +126,7 @@ $members_query = mysqli_query($conn, "
 <!-- ✅ Socket.IO -->
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script>
-    const socket = io("https://rent-tracker-backend.onrender.com");
-
+    const socket = io("https://rent-tracker-backend.onrender.com"); 
     const groupId = <?php echo $group_id; ?>;
     const senderId = <?php echo $landlord_id; ?>;
     const senderName = <?php echo json_encode($landlord_name); ?>;
@@ -148,57 +147,33 @@ $members_query = mysqli_query($conn, "
     let lastMessageSender = null;
     let lastMessageTime = null;
 
-    function getMySQLTimestamp() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const seconds = String(now.getSeconds()).padStart(2, '0');
-    
-    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-}
+    // ✅ Connection status
+    socket.on("connect", () => {
+        connectionStatus.textContent = "Connected";
+        connectionStatus.className = "connection-status connected";
+        setTimeout(() => connectionStatus.style.display = "none", 3000);
+    });
 
+    socket.on("disconnect", () => {
+        connectionStatus.textContent = "Disconnected";
+        connectionStatus.className = "connection-status disconnected";
+        connectionStatus.style.display = "block";
+    });
 
-    // ✅ Step 1: Confirm connection
-socket.on("connect", () => {
-    console.log("✅ Connected to Socket.IO server, ID:", socket.id);
-    connectionStatus.textContent = "Connected";
-    connectionStatus.className = "connection-status connected";
-    setTimeout(() => connectionStatus.style.display = "none", 3000);
-});
+    // ✅ Join group
+    socket.emit("join-group", groupId);
 
-socket.on("disconnect", (reason) => {
-    console.log("❌ Disconnected from server. Reason:", reason);
-    connectionStatus.textContent = "Disconnected";
-    connectionStatus.className = "connection-status disconnected";
-    connectionStatus.style.display = "block";
-});
-
-socket.on("connect_error", (error) => {
-    console.error("🔌 Connection error:", error);
-});
-
-socket.on("error", (error) => {
-    console.error("❌ Socket error:", error);
-    alert("Error: " + error.message);
-});
-
-// ✅ Join group with confirmation
-socket.emit("join-group", groupId);
-console.log("📡 Attempting to join group:", groupId);
-
-    // ✅ Typing indicator
-    messageInput.addEventListener('input', function () {
+    // ✅ Auto-resize textarea
+    messageInput.addEventListener('input', function() {
         this.style.height = 'auto';
         this.style.height = (this.scrollHeight) + 'px';
-
+        
+        // Typing indicator
         if (!isTyping) {
             isTyping = true;
             socket.emit("typing-start", { group_id: groupId, sender_name: senderName });
         }
-
+        
         clearTimeout(typingTimeout);
         typingTimeout = setTimeout(() => {
             isTyping = false;
@@ -206,6 +181,7 @@ console.log("📡 Attempting to join group:", groupId);
         }, 1000);
     });
 
+    // ✅ Send on Enter (without Shift)
     messageInput.addEventListener("keydown", function (e) {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -213,201 +189,114 @@ console.log("📡 Attempting to join group:", groupId);
         }
     });
 
-    // ✅ Step 3: Send message
+    // ✅ Send message
     function sendMessage() {
-    const msg = messageInput.value.trim();
-    if (!msg) {
-        console.log("⚠️ Empty message, not sending");
-        return;
+        const msg = messageInput.value.trim();
+        if (!msg) return;
+
+        sendBtn.disabled = true;
+        
+        socket.emit("send-group-message", {
+            group_id: groupId,
+            sender_id: senderId,
+            sender_name: senderName,
+            sender_role: senderRole,
+            message: msg
+        });
+
+        messageInput.value = "";
+        messageInput.style.height = 'auto';
+        
+        // Stop typing indicator
+        if (isTyping) {
+            isTyping = false;
+            socket.emit("typing-stop", { group_id: groupId });
+        }
+        
+        setTimeout(() => sendBtn.disabled = false, 500);
     }
 
-    if (!socket.connected) {
-        console.error("❌ Socket not connected");
-        alert("Not connected to server. Please refresh the page.");
-        return;
+    // ✅ Format time
+    function formatLocalTime(utcString) {
+        const date = new Date(utcString);
+        const now = new Date();
+        const diffInHours = (now - date) / (1000 * 60 * 60);
+        
+        if (diffInHours < 24) {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } else {
+            return date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + 
+                   ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
     }
 
-    console.log("📤 PREPARING TO SEND MESSAGE:", msg);
-    sendBtn.disabled = true;
-
-    const messageData = {
-        group_id: groupId,
-        sender_id: senderId,
-        sender_name: senderName,
-        sender_role: senderRole,
-        message: msg,
-        timestamp: getMySQLTimestamp() // Use MySQL-compatible format
-    };
-
-    console.log("📤 SENDING MESSAGE DATA:", messageData);
-    console.log("📊 Current connection status:", socket.connected);
-    console.log("📊 Group ID:", groupId, "Sender ID:", senderId);
-
-    socket.emit("send-group-message", messageData);
-
-    messageInput.value = "";
-    messageInput.style.height = 'auto';
-
-    if (isTyping) {
-        isTyping = false;
-        socket.emit("typing-stop", { group_id: groupId });
-    }
-
-    setTimeout(() => sendBtn.disabled = false, 1000);
-}
-
-// ✅ Enhanced message receive handling
-socket.on("group-message", data => {
-    console.log("📥 RECEIVED MESSAGE FROM SERVER:");
-    console.log("📋 Raw data:", data);
-    console.log("📋 Data type:", typeof data);
-    console.log("📋 Data structure:", JSON.stringify(data, null, 2));
-    
-    // Check if data is valid
-    if (!data) {
-        console.error("❌ Received null/undefined data");
-        return;
-    }
-    
-    if (!data.message) {
-        console.error("❌ Received data missing message field:", data);
-        return;
-    }
-    
-    if (!data.sender_id) {
-        console.error("❌ Received data missing sender_id field:", data);
-        return;
-    }
-    
-    console.log("✅ Message data validation passed, calling appendMessage");
-    appendMessage(data);
-});
-    // // ✅ Format timestamp
-    // function formatLocalTime(utcString) {
-    //     const date = new Date(utcString);
-    //     const now = new Date();
-    //     const diffInHours = (now - date) / (1000 * 60 * 60);
-
-    //     return diffInHours < 24
-    //         ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    //         : date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + 
-    //           ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    // }
-
+    // ✅ Group consecutive messages
     function shouldGroupMessage(data) {
         if (!lastMessageSender) return false;
-
+        
         const currentTime = new Date(data.timestamp);
-        const timeDiff = (currentTime - lastMessageTime) / (1000 * 60);
+        const timeDiff = (currentTime - lastMessageTime) / (1000 * 60); // minutes
+        
         return lastMessageSender === data.sender_id && timeDiff < 5;
     }
 
-function appendMessage(data) {
-    console.log("📝 APPENDING MESSAGE TO UI:");
-    console.log("📋 Message content:", data.message);
-    console.log("📋 Sender ID:", data.sender_id, "Current user ID:", senderId);
-    console.log("📋 Timestamp:", data.timestamp);
-    
-    // Check for duplicates
-    const isDuplicate = allMessages.some(msg => 
-        msg.message === data.message && 
-        msg.sender_id === data.sender_id && 
-        Math.abs(new Date(msg.timestamp) - new Date(data.timestamp)) < 2000
-    );
-    
-    if (isDuplicate) {
-        console.log("🔄 Duplicate message detected, skipping");
-        return;
-    }
-    
-    allMessages.push(data);
-    console.log("📊 Total messages now:", allMessages.length);
+    // ✅ Append message with grouping
+    function appendMessage(data) {
+        allMessages.push(data);
+        
+        const isMe = data.sender_id == senderId;
+        const isGrouped = shouldGroupMessage(data);
+        const time = formatLocalTime(data.timestamp);
 
-    const isMe = data.sender_id == senderId;
-    const isGrouped = shouldGroupMessage(data);
-    const time = formatLocalTime(data.timestamp);
+        if (!isGrouped) {
+            // Create new message group
+            const groupDiv = document.createElement("div");
+            groupDiv.classList.add("message-group");
+            groupDiv.setAttribute("data-sender", data.sender_id);
+            chatBox.appendChild(groupDiv);
+        }
 
-    console.log("📋 Message properties:", { isMe, isGrouped, time });
+        const messageDiv = document.createElement("div");
+        messageDiv.classList.add("message");
+        if (isMe) messageDiv.classList.add("me");
 
-    const messageDiv = document.createElement("div");
-    messageDiv.classList.add("message");
-    if (isMe) messageDiv.classList.add("me");
+        if (isMe) {
+            messageDiv.innerHTML = `
+                <div class="me-bubble">
+                    <div class="message-content">${data.message}</div>
+                    <div class="timestamp">${time} <span class="message-status">✓</span></div>
+                </div>
+            `;
+        } else {
+            const showName = !isGrouped;
+            messageDiv.innerHTML = `
+                <div class="other-bubble">
+                    ${showName ? `<div class="sender-name">${data.sender_name || "Someone"}</div>` : ''}
+                    <div class="message-content">${data.message}</div>
+                    <div class="timestamp">${time}</div>
+                </div>
+            `;
+        }
 
-    const messageHTML = isMe
-        ? `<div class="me-bubble">
-               <div class="message-content">${escapeHtml(data.message)}</div>
-               <div class="timestamp">${time} <span class="message-status">✓</span></div>
-           </div>`
-        : `<div class="other-bubble">
-               ${!isGrouped ? `<div class="sender-name">${escapeHtml(data.sender_name || "Someone")}</div>` : ''}
-               <div class="message-content">${escapeHtml(data.message)}</div>
-               <div class="timestamp">${time}</div>
-           </div>`;
+        // Add to the last message group or create new one
+        const lastGroup = chatBox.lastElementChild;
+        if (lastGroup && lastGroup.getAttribute("data-sender") === data.sender_id.toString() && isGrouped) {
+            lastGroup.appendChild(messageDiv);
+        } else {
+            const newGroup = document.createElement("div");
+            newGroup.classList.add("message-group");
+            newGroup.setAttribute("data-sender", data.sender_id);
+            newGroup.appendChild(messageDiv);
+            chatBox.appendChild(newGroup);
+        }
 
-    messageDiv.innerHTML = messageHTML;
-    console.log("📋 Generated HTML:", messageHTML);
-
-    // Add to chat
-    const lastGroup = chatBox.lastElementChild;
-    if (lastGroup && lastGroup.getAttribute("data-sender") === data.sender_id.toString() && isGrouped) {
-        lastGroup.appendChild(messageDiv);
-        console.log("📎 Added to existing message group");
-    } else {
-        const newGroup = document.createElement("div");
-        newGroup.classList.add("message-group");
-        newGroup.setAttribute("data-sender", data.sender_id);
-        newGroup.appendChild(messageDiv);
-        chatBox.appendChild(newGroup);
-        console.log("📎 Created new message group");
+        lastMessageSender = data.sender_id;
+        lastMessageTime = new Date(data.timestamp);
+        
+        chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    lastMessageSender = data.sender_id;
-    lastMessageTime = new Date(data.timestamp);
-    
-    console.log("📊 Chat box children count:", chatBox.children.length);
-    console.log("📊 Scrolling to bottom");
-    chatBox.scrollTop = chatBox.scrollHeight;
-    
-    console.log("✅ MESSAGE SUCCESSFULLY ADDED TO UI");
-}
-
-// ✅ Add HTML escape function
-function escapeHtml(text) {
-    if (!text) return '';
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.toString().replace(/[&<>"']/g, function(m) { return map[m]; });
-}
-
-// ✅ Debug the chat box
-console.log("📊 Chat box element:", chatBox);
-console.log("📊 Chat box styles:", window.getComputedStyle(chatBox));
-
-// ✅ Test function - call this in console to verify message display
-window.testMessage = function() {
-    const testData = {
-        id: 3,
-        group_id: groupId,
-        sender_id: senderId,
-        sender_name: senderName,
-        sender_role: senderRole,
-        message: "Test message " + new Date().getTime(),
-        timestamp: getMySQLTimestamp() // Use MySQL-compatible format
-    };
-    console.log("🧪 Testing with fake message:", testData);
-    appendMessage(testData);
-};
-
-    // ✅ Step 4: Receive message
-    socket.on("group-message", data => {
-        appendMessage(data);
-    });
-
+    // ✅ Typing indicators
     socket.on("user-typing", (data) => {
         if (data.sender_name !== senderName) {
             typingIndicator.textContent = `${data.sender_name} is typing...`;
@@ -419,6 +308,7 @@ window.testMessage = function() {
         typingIndicator.classList.add("hidden");
     });
 
+    // ✅ Search functionality
     function toggleSearch() {
         searchContainer.classList.toggle("hidden");
         if (!searchContainer.classList.contains("hidden")) {
@@ -429,17 +319,17 @@ window.testMessage = function() {
         }
     }
 
-    searchInput.addEventListener("input", function () {
+    searchInput.addEventListener("input", function() {
         const query = this.value.toLowerCase().trim();
         searchResults.innerHTML = "";
-
+        
         if (query.length < 2) {
             searchResults.style.display = "none";
             return;
         }
 
-        const results = allMessages.filter(msg =>
-            msg.message.toLowerCase().includes(query) ||
+        const results = allMessages.filter(msg => 
+            msg.message.toLowerCase().includes(query) || 
             msg.sender_name.toLowerCase().includes(query)
         ).slice(0, 10);
 
@@ -453,6 +343,7 @@ window.testMessage = function() {
                     <div style="font-size: 0.8em; color: #666;">${formatLocalTime(result.timestamp)}</div>
                 `;
                 div.addEventListener("click", () => {
+                    // Highlight the message (you can implement scrolling to message here)
                     searchResults.style.display = "none";
                     searchInput.value = "";
                 });
@@ -463,6 +354,7 @@ window.testMessage = function() {
         }
     });
 
+    // ✅ Clear chat (visual only)
     function clearChat() {
         if (confirm("Clear chat history? (This only clears your view, not the actual messages)")) {
             chatBox.innerHTML = "";
@@ -472,41 +364,50 @@ window.testMessage = function() {
         }
     }
 
+    // ✅ Toggle sidebar
     function toggleSidebar() {
-        const sidebar = document.getElementById("sidebar");
-        const toggleBtn = document.getElementById("toggleBtn");
-        sidebar.classList.toggle("hidden");
-        toggleBtn.textContent = sidebar.classList.contains("hidden") ? "Show" : "Hide";
-    }
+    const sidebar = document.getElementById("sidebar");
+    const toggleBtn = document.getElementById("toggleBtn");
 
-    // ✅ Step 5: Load messages from DB
+    // Toggle "hidden" class instead of manually setting display styles
+    sidebar.classList.toggle("hidden");
+    toggleBtn.textContent = sidebar.classList.contains("hidden") ? "Show" : "Hide";
+}
+
+
+    // ✅ Load past messages
     window.onload = function () {
         fetch(`fetch_group_messages.php?group_id=${groupId}`)
             .then(response => response.json())
             .then(messages => {
-                console.log("⬇️ Loaded past messages:", messages.length);
                 messages.forEach(appendMessage);
                 chatBox.scrollTop = chatBox.scrollHeight;
-
-                document.getElementById("onlineCount").textContent =
+                
+                // Update online count
+                document.getElementById("onlineCount").textContent = 
                     `${document.querySelectorAll('.member-item').length} members`;
             })
             .catch(error => {
-                console.error("❌ Error loading messages:", error);
+                console.error('Error loading messages:', error);
                 chatBox.innerHTML = '<div class="text-center text-muted">Failed to load messages</div>';
             });
     };
 
-    // ✅ Handle resize
-    window.addEventListener("resize", function () {
+    // ✅ Real-time message receive
+    socket.on("group-message", data => {
+        appendMessage(data);
+    });
+
+    // ✅ Handle window resize
+    window.addEventListener("resize", function() {
         if (window.innerWidth > 768) {
             document.getElementById("sidebar").classList.remove("hidden");
             document.getElementById("sidebar").style.display = "flex";
         }
     });
 
-    // ✅ Hide search on click outside
-    document.addEventListener("click", function (e) {
+    // ✅ Click outside to close search
+    document.addEventListener("click", function(e) {
         if (!searchContainer.contains(e.target)) {
             searchResults.style.display = "none";
         }
