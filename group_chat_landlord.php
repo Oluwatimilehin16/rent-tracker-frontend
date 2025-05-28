@@ -148,6 +148,19 @@ $members_query = mysqli_query($conn, "
     let lastMessageSender = null;
     let lastMessageTime = null;
 
+    function getMySQLTimestamp() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+
     // ✅ Step 1: Confirm connection
 socket.on("connect", () => {
     console.log("✅ Connected to Socket.IO server, ID:", socket.id);
@@ -222,7 +235,8 @@ console.log("📡 Attempting to join group:", groupId);
         sender_id: senderId,
         sender_name: senderName,
         sender_role: senderRole,
-        message: msg
+        message: msg,
+        timestamp: getMySQLTimestamp() // Use MySQL-compatible format
     };
 
     console.log("📤 SENDING MESSAGE DATA:", messageData);
@@ -377,13 +391,13 @@ console.log("📊 Chat box styles:", window.getComputedStyle(chatBox));
 // ✅ Test function - call this in console to verify message display
 window.testMessage = function() {
     const testData = {
-        id: 999,
+        id: 3,
         group_id: groupId,
         sender_id: senderId,
         sender_name: senderName,
         sender_role: senderRole,
         message: "Test message " + new Date().getTime(),
-        timestamp: new Date().toISOString()
+        timestamp: getMySQLTimestamp() // Use MySQL-compatible format
     };
     console.log("🧪 Testing with fake message:", testData);
     appendMessage(testData);
