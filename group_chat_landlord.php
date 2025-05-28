@@ -282,17 +282,17 @@ socket.on("group-message", data => {
     console.log("✅ Message data validation passed, calling appendMessage");
     appendMessage(data);
 });
-    // ✅ Format timestamp
-    function formatLocalTime(utcString) {
-        const date = new Date(utcString);
-        const now = new Date();
-        const diffInHours = (now - date) / (1000 * 60 * 60);
+    // // ✅ Format timestamp
+    // function formatLocalTime(utcString) {
+    //     const date = new Date(utcString);
+    //     const now = new Date();
+    //     const diffInHours = (now - date) / (1000 * 60 * 60);
 
-        return diffInHours < 24
-            ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            : date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + 
-              ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
+    //     return diffInHours < 24
+    //         ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    //         : date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + 
+    //           ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    // }
 
     function shouldGroupMessage(data) {
         if (!lastMessageSender) return false;
