@@ -126,7 +126,7 @@ $members_query = mysqli_query($conn, "
 <!-- ✅ Socket.IO -->
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script>
-    const socket = io("http://localhost:3000"); // Update this for production
+    const socket = io("https://rent-tracker-backend.onrender.com"); 
     const groupId = <?php echo $group_id; ?>;
     const senderId = <?php echo $landlord_id; ?>;
     const senderName = <?php echo json_encode($landlord_name); ?>;
