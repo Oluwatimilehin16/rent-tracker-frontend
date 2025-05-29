@@ -18,14 +18,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $due_date = mysqli_real_escape_string($conn, $_POST['due_date']);
     $user_id = (int)$_POST['users_id'];
 
-    $status = isset($_POST['status']) ? 1 : 0;
+    $status = isset($_POST['status']) ? 'paid' : 'unpaid';
     $payment_date = null;
 
-    if ($status === 1 && !empty($_POST['payment_date'])) {
-        $payment_date = mysqli_real_escape_string($conn, $_POST['payment_date']);
-    } elseif ($status === 1) {
-        $payment_date = date('Y-m-d');
-    }
+   if ($status === 'paid' && !empty($_POST['payment_date'])) {
+    $payment_date = mysqli_real_escape_string($conn, $_POST['payment_date']);
+} elseif ($status === 'paid') {
+    $payment_date = date('Y-m-d');
+}
 
     $payment_date_sql = $payment_date ? "'$payment_date'" : "NULL";
 
@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             bill_name = '$bill_name',
             amount = $amount,
             due_date = '$due_date',
-            status = $status
+            status = '$status'
         WHERE id = $bill_id AND landlord_id = '$landlord_id'
     ";
 
@@ -396,7 +396,7 @@ $classes_result = mysqli_query($conn, "SELECT id, class_name FROM classes WHERE 
 
 
                 <div class="checkbox-wrapper">
-                    <input type="checkbox" id="status" name="status" value="1" <?php echo $bill['status'] ? 'checked' : ''; ?>>
+                    <input type="checkbox" id="status" name="status" value="paid" <?= $bill['status'] === 'paid' ? 'checked' : '' ?>
                     <label for="status">Mark as Paid</label>
                 </div>
 
