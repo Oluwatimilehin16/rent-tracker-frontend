@@ -34,7 +34,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             bill_name = '$bill_name',
             amount = $amount,
             due_date = '$due_date',
-            users_id = $user_id,
             status = $status
         WHERE id = $bill_id AND landlord_id = '$landlord_id'
     ";
