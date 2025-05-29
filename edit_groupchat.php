@@ -168,300 +168,29 @@ $stats = $stmt->get_result()->fetch_assoc();
 <head>
     <title>Edit Group Chat | RentTracker</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="edit_groupchat.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            overflow: hidden;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-        }
-
-        .header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-
-        .content {
-            padding: 30px;
-        }
-
-        .nav-breadcrumb {
-            margin-bottom: 30px;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 8px;
-        }
-
-        .nav-breadcrumb a {
-            color: #007bff;
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .nav-breadcrumb a:hover {
-            text-decoration: underline;
-        }
-
-        .message {
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-weight: 500;
-        }
-
-        .message.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .message.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 12px;
-            text-align: center;
-        }
-
-        .stat-card i {
-            font-size: 2rem;
-            margin-bottom: 10px;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .section {
-            background: #f8f9fa;
-            border-radius: 12px;
-            padding: 25px;
-            margin-bottom: 30px;
-        }
-
-        .section h2 {
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 1.5rem;
-            border-bottom: 2px solid #007bff;
-            padding-bottom: 10px;
-        }
-
-        .member-list {
-            display: grid;
-            gap: 15px;
-        }
-
-        .member-item {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .member-info h4 {
-            color: #333;
-            margin-bottom: 5px;
-        }
-
-        .member-info p {
-            color: #666;
-            font-size: 0.9rem;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .form-group select {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 1rem;
-        }
-
-        .form-group select:focus {
-            outline: none;
-            border-color: #007bff;
-        }
-
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-            text-align: center;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #007bff, #0056b3);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,123,255,0.3);
-        }
-
-        .btn-danger {
-            background: linear-gradient(135deg, #dc3545, #c82333);
-            color: white;
-        }
-
-        .btn-danger:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(220,53,69,0.3);
-        }
-
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background: #5a6268;
-            transform: translateY(-2px);
-        }
-
-        .btn-small {
-            padding: 8px 16px;
-            font-size: 0.9rem;
-        }
-
-        .danger-zone {
-            border: 2px solid #dc3545;
-            border-radius: 12px;
-            padding: 25px;
-            background: #fff5f5;
-        }
-
-        .danger-zone h3 {
-            color: #dc3545;
-            margin-bottom: 15px;
-        }
-
-        .no-classes {
-            text-align: center;
-            padding: 40px 20px;
-            color: #666;
-        }
-
-        .no-classes i {
-            font-size: 3rem;
-            margin-bottom: 15px;
-            color: #ddd;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-        }
-
-        .modal-content {
-            background-color: white;
-            margin: 15% auto;
-            padding: 30px;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 500px;
-            text-align: center;
-        }
-
-        .modal-content h3 {
-            color: #dc3545;
-            margin-bottom: 20px;
-        }
-
-        .modal-buttons {
-            margin-top: 25px;
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-        }
-
-        @media (max-width: 768px) {
-            .member-item {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 15px;
-            }
-
-            .header h1 {
-                font-size: 2rem;
-            }
-
-            .modal-buttons {
-                flex-direction: column;
-            }
-        }
-    </style>
 </head>
 <body>
+
+<header>
+    <div class="logo">
+        <a href="index.php"><img src="./assets/logo.png" alt="RentTracker"></a>
+    </div>
+    <div class="hamburger" onclick="toggleMenu()">
+        <i class="fas fa-bars"></i>
+    </div>
+    <nav id="main-nav">
+        <ul>
+            <li><a href="create_class.php"><i class="fas fa-user-plus"></i> Invite</a></li>
+            <li><a href="add_bill.php"><i class="fas fa-plus-circle"></i> Add Bill</a></li>
+            <li><a href="view_bills.php"><i class="fas fa-list-alt"></i> View Bills</a></li>
+            <li><a href="create_groupchat.php"><i class="fas fa-users"></i> Create group chat</a></li>
+            <li><a href="landlord_group_chats.php" class="active">💬 View My Group Chats</a></li>
+            <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+        </ul>
+    </nav>
+</header>
 
 <div class="container">
     <div class="header">
@@ -586,6 +315,10 @@ $stats = $stmt->get_result()->fetch_assoc();
     </div>
 </div>
 
+<footer style="background-color: #218838; color: white; text-align: center; padding: 20px; margin-top: auto;">
+    &copy; <?= date('Y') ?> RentTracker. All rights reserved. | <a href="privacy.php" style="color: #ecc700;">Privacy Policy</a> | <a href="terms.php" style="color: #ecc700;">Terms of Service</a>
+</footer>
+
 <!-- Delete Confirmation Modal -->
 <div id="deleteModal" class="modal">
     <div class="modal-content">
@@ -629,6 +362,10 @@ document.addEventListener('keydown', function(event) {
         hideDeleteModal();
     }
 });
+
+function toggleMenu() {
+    document.getElementById('main-nav').classList.toggle('active');
+}
 </script>
 
 </body>
