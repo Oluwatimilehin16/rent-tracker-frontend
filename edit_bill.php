@@ -16,7 +16,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $bill_name = mysqli_real_escape_string($conn, $_POST['bill_name']);
     $amount = (float)$_POST['amount'];
     $due_date = mysqli_real_escape_string($conn, $_POST['due_date']);
-    $class_id = (int)$_POST['class_id'];
+    $user_id = (int)$_POST['users_id'];
+
     $status = isset($_POST['status']) ? 1 : 0;
     $payment_date = null;
 
@@ -33,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             bill_name = '$bill_name',
             amount = $amount,
             due_date = '$due_date',
-            class_id = $class_id,
+            users_id = $user_id,
             status = $status
         WHERE id = $bill_id AND landlord_id = '$landlord_id'
     ";
@@ -47,13 +48,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Fetch bill data to prefill the form
 $bill_query = "
-    SELECT b.*, c.class_name 
-    FROM bills b 
-    LEFT JOIN classes c ON b.class_id = c.id 
-    WHERE b.id = $bill_id AND b.landlord_id = '$landlord_id'
+    SELECT b.*, u.firstname AS tenant_firstname, u.id AS users_id
+    FROM bills b
+    JOIN user_classes uc ON b.class_id = uc.class_id
+    JOIN users u ON uc.user_id = u.id
+    WHERE b.id = ?
 ";
-$bill_result = mysqli_query($conn, $bill_query);
-$bill = mysqli_fetch_assoc($bill_result);
+
+$stmt = $conn->prepare($bill_query);
+$stmt->bind_param("i", $bill_id); // "i" means integer
+$stmt->execute();
+$bill_result = $stmt->get_result();
+$bill = $bill_result->fetch_assoc();
+
+// Fetch tenants under the landlord
+$tenants_result = mysqli_query($conn, "
+    SELECT u.id, u.firstname 
+    FROM users u 
+    INNER JOIN user_classes uc ON u.id = uc.user_id 
+    INNER JOIN classes c ON uc.class_id = c.id 
+    WHERE c.landlord_id = '$landlord_id'
+    GROUP BY u.id
+");
+
 
 // Fetch landlord's classes
 $classes_result = mysqli_query($conn, "SELECT id, class_name FROM classes WHERE landlord_id = '$landlord_id'");
@@ -141,7 +158,7 @@ $classes_result = mysqli_query($conn, "SELECT id, class_name FROM classes WHERE 
         }
 
         .content-wrapper {
-            margin-top: 80px;
+            margin-top: 70px;
             padding: 20px;
             max-width: 1200px;
             margin-left: auto;
@@ -151,8 +168,9 @@ $classes_result = mysqli_query($conn, "SELECT id, class_name FROM classes WHERE 
         .title {
             color: #186c2c;
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 5px;
             font-size: 24px;
+            font-variant: small-caps;
         }
 
         .form-container {
@@ -349,8 +367,7 @@ $classes_result = mysqli_query($conn, "SELECT id, class_name FROM classes WHERE 
     </header>
 
     <div class="content-wrapper">
-        <h1 class="title">Edit Bill: <?php echo htmlspecialchars($bill['bill_name']); ?></h1>
-
+        <h1 class="title">Edit Bill for: <?= htmlspecialchars($bill['tenant_firstname'] ?? 'Tenant') ?></h1>
         <?php if ($success_message): ?>
             <div class="alert alert-success"><?php echo $success_message; ?></div>
         <?php elseif ($error_message): ?>
@@ -368,14 +385,16 @@ $classes_result = mysqli_query($conn, "SELECT id, class_name FROM classes WHERE 
                 <label for="due_date">Due Date</label>
                 <input type="date" id="due_date" name="due_date" value="<?php echo $bill['due_date']; ?>" required>
 
-                <label for="class_id">Class</label>
-                <select id="class_id" name="class_id" required>
-                    <?php while ($class = mysqli_fetch_assoc($classes_result)): ?>
-                        <option value="<?php echo $class['id']; ?>" <?php if ($class['id'] == $bill['class_id']) echo 'selected'; ?>>
-                            <?php echo htmlspecialchars($class['class_name']); ?>
-                        </option>
-                    <?php endwhile; ?>
-                </select>
+               <label for="user_id">Assign to Tenant</label>
+                <select id="user_id" name="users_id" required>
+                 <option value="">Select a tenant</option>
+                    <?php while ($tenant = mysqli_fetch_assoc($tenants_result)): ?>
+                 <option value="<?= $tenant['id'] ?>" <?= $tenant['id'] == $bill['users_id'] ? 'selected' : '' ?>>
+                 <?= htmlspecialchars($tenant['firstname']) ?>
+                </option>
+            <?php endwhile; ?>
+            </select>
+
 
                 <div class="checkbox-wrapper">
                     <input type="checkbox" id="status" name="status" value="1" <?php echo $bill['status'] ? 'checked' : ''; ?>>
