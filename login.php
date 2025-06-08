@@ -5,7 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 if (isset($_POST['submit'])) {
     // Call your API instead of direct database
-    $api_url = 'https://rent-tracker-api.onrender.com/login.php'; // Change to your API URL
+    $api_url = 'https://rent-tracker-api.onrender.com'; // Change to your API URL
     
     $post_data = [
         'email' => $_POST['email'],
