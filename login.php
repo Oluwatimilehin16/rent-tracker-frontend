@@ -5,24 +5,36 @@ if (session_status() === PHP_SESSION_NONE) {
 
 if (isset($_POST['submit'])) {
     // Call your API instead of direct database
-    $api_url = 'https://rent-tracker-api.onrender.com'; // Change to your API URL
-    
-    $post_data = [
-        'email' => $_POST['email'],
-        'password' => $_POST['password']
-    ];
-    
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $api_url);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post_data));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    
-    $response = curl_exec($ch);
-    curl_close($ch);
-    
-    $result = json_decode($response, true);
-    
+   $api_url = 'https://rent-tracker-api.onrender.com/login.php'; // make sure this is the right file
+
+$post_data = [
+    'email' => $_POST['email'],
+    'password' => $_POST['password']
+];
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $api_url);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post_data));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+if (!$response) {
+    die('API request failed.');
+}
+
+$result = json_decode($response, true);
+
+if (json_last_error() !== JSON_ERROR_NONE) {
+    die('JSON decode error: ' . json_last_error_msg());
+}
+
+if (!isset($result['success'])) {
+    die('Malformed API response: ' . print_r($result, true));
+}
+
     if ($result['success']) {
         $user = $result['user'];
         $_SESSION['users_id'] = $user['id'];
