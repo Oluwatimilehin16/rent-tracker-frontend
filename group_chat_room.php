@@ -1,6 +1,7 @@
 <?php
-include 'config.php';
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 $group_id = intval($_GET['group_id'] ?? 0);
 
@@ -8,146 +9,102 @@ $group_id = intval($_GET['group_id'] ?? 0);
 if (isset($_SESSION['tenant_id'])) {
     $user_id = $_SESSION['tenant_id'];
     $user_role = 'tenant';
-
-    // ✅ Check if tenant has access to this group
-    $check_access = mysqli_query($conn, "
-        SELECT gcc.group_id 
-        FROM group_chat_classes gcc
-        JOIN user_classes uc ON gcc.class_id = uc.class_id
-        WHERE uc.user_id = '$user_id' AND gcc.group_id = '$group_id'
-    ");
 } elseif (isset($_SESSION['landlord_id'])) {
     $user_id = $_SESSION['landlord_id'];
     $user_role = 'landlord';
-
-    // ✅ Check if landlord owns the group
-    $check_access = mysqli_query($conn, "
-        SELECT id FROM group_chats 
-        WHERE id = '$group_id' AND landlord_id = '$user_id'
-    ");
 } else {
     header("Location: login.php");
     exit();
 }
 
-if (mysqli_num_rows($check_access) == 0) {
-    echo "Access denied.";
+if (!$group_id) {
+    echo "Invalid group ID.";
     exit();
 }
-
-// ✅ Fetch group chat name
-$group = mysqli_fetch_assoc(mysqli_query($conn, "SELECT name FROM group_chats WHERE id = '$group_id'"));
-
-// ✅ Fetch user name
-$name_result = mysqli_query($conn, "SELECT firstname FROM users WHERE id = '$user_id'");
-$user_name = mysqli_fetch_assoc($name_result)['firstname'] ?? 'Unknown';
-
-// ✅ Fetch group members (same query as landlord logic)
-$members_query = mysqli_query($conn, "
-    SELECT u.id, u.firstname, u.email, 'tenant' as role 
-    FROM users u 
-    JOIN user_classes uc ON u.id = uc.user_id
-    JOIN group_chat_classes gcc ON uc.class_id = gcc.class_id
-    WHERE gcc.group_id = '$group_id'
-
-    UNION
-
-    SELECT u.id, u.firstname, u.email, 'landlord' as role
-    FROM users u
-    JOIN group_chats gc ON u.id = gc.landlord_id
-    WHERE gc.id = '$group_id'
-");
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title><?= htmlspecialchars($group['name']) ?> - Tenant Group Chat</title>
-
-    <link rel="stylesheet" href="group_chat_landlord.css"> <!-- Use the CSS you pasted -->
+    <title>Group Chat</title>
+    <link rel="stylesheet" href="group_chat_landlord.css">
     <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
 </head>
 <body>
-    <div class="connection-status connecting" id="connectionStatus">Connecting...</div>
-<div class="chat-container">
-<div class="toggle-sidebar-btn">
-        <button class="header-btn" onclick="toggleSidebar()" id="toggleBtn">Hide</button>
-    </div>
-
-    <div class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-        <span>Group Members</span>
-    </div>
-
-         <div class="member-list" id="memberList">
-            <?php while ($member = mysqli_fetch_assoc($members_query)): ?>
-            <div class="member-item" data-user-id="<?php echo $member['id']; ?>" data-role="<?php echo $member['role']; ?>">
-                <div class="member-avatar">
-                    <?php echo strtoupper(substr($member['firstname'], 0, 1)); ?>
-                </div>
-                <div class="member-info">
-                    <div class="member-name"><?php echo htmlspecialchars($member['firstname']); ?></div>
-                    <div class="member-role"><?php echo $member['role']; ?></div>
-                </div>
-                <div class="online-indicator" style="display: none;"></div>
-            </div>
-            <?php endwhile; ?>
+    <div class="connection-status connecting" id="connectionStatus">Loading...</div>
+    
+    <div class="chat-container">
+        <div class="toggle-sidebar-btn">
+            <button class="header-btn" onclick="toggleSidebar()" id="toggleBtn">Hide</button>
         </div>
 
-         <div class="sidebar-footer">
-        <a href="tenant_group_chat.php" class="dashboard-button">← Back to Dashboard</a>
-    </div>
-    </div>
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <span>Group Members</span>
+            </div>
 
-    <!-- Chat Area -->
-    <div class="chat-wrapper">
-        <div class="chat-header">
-            <div>
-                <span><?php echo htmlspecialchars($group['name']); ?></span>
-                <div style="font-size: 12px; font-weight: normal; opacity: 0.8;" id="onlineCount">
-                    Loading members...
+            <div class="member-list" id="memberList">
+                <!-- Members will be loaded dynamically -->
+            </div>
+
+            <div class="sidebar-footer">
+                <a href="tenant_group_chat.php" class="dashboard-button">← Back to Dashboard</a>
+            </div>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="chat-wrapper">
+            <div class="chat-header">
+                <div>
+                    <span id="groupName">Loading...</span>
+                    <div style="font-size: 12px; font-weight: normal; opacity: 0.8;" id="onlineCount">
+                        Loading members...
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="header-btn" onclick="toggleSearch()">Search</button>
+                    <button class="header-btn" onclick="clearChat()">Clear</button>
                 </div>
             </div>
-            <div class="header-actions">
-                <button class="header-btn" onclick="toggleSearch()">Search</button>
-                <button class="header-btn" onclick="clearChat()">Clear</button>
-            </div>
-        </div>
 
-        <div class="search-container hidden" id="searchContainer">
-            <div style="position: relative;">
-                <input type="text" class="search-input" id="searchInput" placeholder="Search messages..." autocomplete="off">
-                <div class="search-results" id="searchResults"></div>
+            <div class="search-container hidden" id="searchContainer">
+                <div style="position: relative;">
+                    <input type="text" class="search-input" id="searchInput" placeholder="Search messages..." autocomplete="off">
+                    <div class="search-results" id="searchResults"></div>
+                </div>
             </div>
-        </div>
 
-        <div id="chat-box"></div>
-        
-        <div class="typing-indicator hidden" id="typingIndicator"></div>
+            <div id="chat-box"></div>
+            
+            <div class="typing-indicator hidden" id="typingIndicator"></div>
 
-        <div class="input-area">
-            <div class="input-wrapper">
-                <textarea id="messageInput" placeholder="Type your message..." rows="1" autofocus></textarea>
+            <div class="input-area">
+                <div class="input-wrapper">
+                    <textarea id="messageInput" placeholder="Type your message..." rows="1" autofocus></textarea>
+                </div>
+                <button class="send-btn" onclick="sendMessage()" id="sendBtn">
+                    <span>Send</span>
+                </button>
             </div>
-            <button class="send-btn" onclick="sendMessage()" id="sendBtn">
-                <span>Send</span>
-            </button>
         </div>
     </div>
-</div>
 
-<!-- ✅ Socket.IO -->
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script>
-    const socket = io("https://rent-tracker-backend.onrender.com"); // Update this for production
-    const groupId = <?php echo $group_id; ?>;
-    const senderId = <?php echo $user_id; ?>;
-    const senderName = <?php echo json_encode($user_name); ?>;
-    const senderRole = "<?php echo $user_role; ?>";
-
+    // Configuration
+    const API_BASE_URL = 'https://rent-tracker-api.onrender.com'; // Replace with your actual API URL
+    const SOCKET_URL = 'https://rent-tracker-backend.onrender.com'; // Update for production
     
+    // User and group data
+    const groupId = <?php echo $group_id; ?>;
+    const userId = <?php echo $user_id; ?>;
+    const userRole = "<?php echo $user_role; ?>";
+    
+    let userName = '';
+    let groupData = null;
+    
+    // DOM elements
     const chatBox = document.getElementById("chat-box");
     const messageInput = document.getElementById("messageInput");
     const sendBtn = document.getElementById("sendBtn");
@@ -156,30 +113,149 @@ $members_query = mysqli_query($conn, "
     const searchContainer = document.getElementById("searchContainer");
     const searchInput = document.getElementById("searchInput");
     const searchResults = document.getElementById("searchResults");
+    const memberList = document.getElementById("memberList");
+    const groupNameEl = document.getElementById("groupName");
+    const onlineCountEl = document.getElementById("onlineCount");
 
+    // Socket.io
+    const socket = io(SOCKET_URL);
+    
+    // State variables
     let isTyping = false;
     let typingTimeout;
     let allMessages = [];
     let lastMessageSender = null;
     let lastMessageTime = null;
 
-    // ✅ Connection status
-    socket.on("connect", () => {
-        connectionStatus.textContent = "Connected";
-        connectionStatus.className = "connection-status connected";
-        setTimeout(() => connectionStatus.style.display = "none", 3000);
-    });
+    // Initialize the chat
+    async function initializeChat() {
+        try {
+            connectionStatus.textContent = "Loading chat data...";
+            
+            // Load group access and basic data
+            const response = await fetch(`${API_BASE_URL}/group_chat_access_api.php?group_id=${groupId}&user_id=${userId}&user_role=${userRole}`);
+            const result = await response.json();
+            
+            if (!result.success) {
+                throw new Error(result.message);
+            }
+            
+            groupData = result.data;
+            userName = groupData.user.name;
+            
+            // Update UI with group data
+            groupNameEl.textContent = groupData.group.name;
+            document.title = `${groupData.group.name} - Group Chat`;
+            onlineCountEl.textContent = `${groupData.member_count} members`;
+            
+            // Populate members list
+            populateMembersList(groupData.members);
+            
+            // Load messages
+            await loadMessages();
+            
+            // Connect to socket
+            setupSocketConnection();
+            
+            connectionStatus.textContent = "Connected";
+            connectionStatus.className = "connection-status connected";
+            setTimeout(() => connectionStatus.style.display = "none", 3000);
+            
+        } catch (error) {
+            console.error('Error initializing chat:', error);
+            connectionStatus.textContent = "Failed to load chat";
+            connectionStatus.className = "connection-status disconnected";
+            
+            chatBox.innerHTML = `
+                <div style="text-align: center; color: #666; padding: 20px;">
+                    <p>Failed to load chat: ${error.message}</p>
+                    <button onclick="location.reload()" style="margin-top: 10px;">Retry</button>
+                </div>
+            `;
+        }
+    }
+    
+    // Populate members list
+    function populateMembersList(members) {
+        memberList.innerHTML = '';
+        members.forEach(member => {
+            const memberDiv = document.createElement('div');
+            memberDiv.className = 'member-item';
+            memberDiv.setAttribute('data-user-id', member.id);
+            memberDiv.setAttribute('data-role', member.role);
+            
+            memberDiv.innerHTML = `
+                <div class="member-avatar">
+                    ${member.firstname.charAt(0).toUpperCase()}
+                </div>
+                <div class="member-info">
+                    <div class="member-name">${member.firstname}</div>
+                    <div class="member-role">${member.role}</div>
+                </div>
+                <div class="online-indicator" style="display: none;"></div>
+            `;
+            
+            memberList.appendChild(memberDiv);
+        });
+    }
+    
+    // Load messages from API
+    async function loadMessages() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/fetch_group_messages_api.php?group_id=${groupId}&user_id=${userId}&user_role=${userRole}&limit=50`);
+            const result = await response.json();
+            
+            if (result.success) {
+                result.data.messages.forEach(message => {
+                    appendMessage(message);
+                });
+                chatBox.scrollTop = chatBox.scrollHeight;
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (error) {
+            console.error('Error loading messages:', error);
+            chatBox.innerHTML = '<div class="text-center text-muted">Failed to load messages</div>';
+        }
+    }
+    
+    // Setup socket connection
+    function setupSocketConnection() {
+        // Connection status handlers
+        socket.on("connect", () => {
+            connectionStatus.textContent = "Connected";
+            connectionStatus.className = "connection-status connected";
+            setTimeout(() => connectionStatus.style.display = "none", 3000);
+        });
 
-    socket.on("disconnect", () => {
-        connectionStatus.textContent = "Disconnected";
-        connectionStatus.className = "connection-status disconnected";
-        connectionStatus.style.display = "block";
-    });
+        socket.on("disconnect", () => {
+            connectionStatus.textContent = "Disconnected";
+            connectionStatus.className = "connection-status disconnected";
+            connectionStatus.style.display = "block";
+        });
 
-    // ✅ Join group
-    socket.emit("join-group", groupId);
+        // Join group
+        socket.emit("join-group", groupId);
 
-    // ✅ Auto-resize textarea
+        // Message handlers
+        socket.on("group-message", data => {
+            appendMessage(data);
+        });
+
+        // Typing indicators
+        socket.on("user-typing", (data) => {
+            if (data.sender_name !== userName) {
+                typingIndicator.textContent = `${data.sender_name} is typing...`;
+                typingIndicator.classList.remove("hidden");
+            }
+        });
+
+        socket.on("user-stopped-typing", () => {
+            typingIndicator.classList.add("hidden");
+        });
+    }
+
+    // Auto-resize textarea and typing indicator
     messageInput.addEventListener('input', function() {
         this.style.height = 'auto';
         this.style.height = (this.scrollHeight) + 'px';
@@ -187,7 +263,7 @@ $members_query = mysqli_query($conn, "
         // Typing indicator
         if (!isTyping) {
             isTyping = true;
-            socket.emit("typing-start", { group_id: groupId, sender_name: senderName });
+            socket.emit("typing-start", { group_id: groupId, sender_name: userName });
         }
         
         clearTimeout(typingTimeout);
@@ -197,7 +273,7 @@ $members_query = mysqli_query($conn, "
         }, 1000);
     });
 
-    // ✅ Send on Enter (without Shift)
+    // Send on Enter (without Shift)
     messageInput.addEventListener("keydown", function (e) {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -205,7 +281,7 @@ $members_query = mysqli_query($conn, "
         }
     });
 
-    // ✅ Send message
+    // Send message function
     function sendMessage() {
         const msg = messageInput.value.trim();
         if (!msg) return;
@@ -214,9 +290,9 @@ $members_query = mysqli_query($conn, "
         
         socket.emit("send-group-message", {
             group_id: groupId,
-            sender_id: senderId,
-            sender_name: senderName,
-            sender_role: senderRole,
+            sender_id: userId,
+            sender_name: userName,
+            sender_role: userRole,
             message: msg
         });
 
@@ -232,7 +308,7 @@ $members_query = mysqli_query($conn, "
         setTimeout(() => sendBtn.disabled = false, 500);
     }
 
-    // ✅ Format time
+    // Format time
     function formatLocalTime(utcString) {
         const date = new Date(utcString);
         const now = new Date();
@@ -246,7 +322,7 @@ $members_query = mysqli_query($conn, "
         }
     }
 
-    // ✅ Group consecutive messages
+    // Group consecutive messages
     function shouldGroupMessage(data) {
         if (!lastMessageSender) return false;
         
@@ -256,21 +332,13 @@ $members_query = mysqli_query($conn, "
         return lastMessageSender === data.sender_id && timeDiff < 5;
     }
 
-    // ✅ Append message with grouping
+    // Append message with grouping
     function appendMessage(data) {
         allMessages.push(data);
         
-        const isMe = data.sender_id == senderId;
+        const isMe = data.sender_id == userId;
         const isGrouped = shouldGroupMessage(data);
         const time = formatLocalTime(data.timestamp);
-
-        if (!isGrouped) {
-            // Create new message group
-            const groupDiv = document.createElement("div");
-            groupDiv.classList.add("message-group");
-            groupDiv.setAttribute("data-sender", data.sender_id);
-            chatBox.appendChild(groupDiv);
-        }
 
         const messageDiv = document.createElement("div");
         messageDiv.classList.add("message");
@@ -312,19 +380,7 @@ $members_query = mysqli_query($conn, "
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    // ✅ Typing indicators
-    socket.on("user-typing", (data) => {
-        if (data.sender_name !== senderName) {
-            typingIndicator.textContent = `${data.sender_name} is typing...`;
-            typingIndicator.classList.remove("hidden");
-        }
-    });
-
-    socket.on("user-stopped-typing", () => {
-        typingIndicator.classList.add("hidden");
-    });
-
-    // ✅ Search functionality
+    // Search functionality
     function toggleSearch() {
         searchContainer.classList.toggle("hidden");
         if (!searchContainer.classList.contains("hidden")) {
@@ -359,7 +415,6 @@ $members_query = mysqli_query($conn, "
                     <div style="font-size: 0.8em; color: #666;">${formatLocalTime(result.timestamp)}</div>
                 `;
                 div.addEventListener("click", () => {
-                    // Highlight the message (you can implement scrolling to message here)
                     searchResults.style.display = "none";
                     searchInput.value = "";
                 });
@@ -370,7 +425,7 @@ $members_query = mysqli_query($conn, "
         }
     });
 
-    // ✅ Clear chat (visual only)
+    // Clear chat (visual only)
     function clearChat() {
         if (confirm("Clear chat history? (This only clears your view, not the actual messages)")) {
             chatBox.innerHTML = "";
@@ -380,41 +435,16 @@ $members_query = mysqli_query($conn, "
         }
     }
 
-    // ✅ Toggle sidebar
+    // Toggle sidebar
     function toggleSidebar() {
-    const sidebar = document.getElementById("sidebar");
-    const toggleBtn = document.getElementById("toggleBtn");
+        const sidebar = document.getElementById("sidebar");
+        const toggleBtn = document.getElementById("toggleBtn");
 
-    // Toggle "hidden" class instead of manually setting display styles
-    sidebar.classList.toggle("hidden");
-    toggleBtn.textContent = sidebar.classList.contains("hidden") ? "Show" : "Hide";
-}
+        sidebar.classList.toggle("hidden");
+        toggleBtn.textContent = sidebar.classList.contains("hidden") ? "Show" : "Hide";
+    }
 
-
-    // ✅ Load past messages
-    window.onload = function () {
-        fetch(`fetch_group_messages.php?group_id=${groupId}`)
-            .then(response => response.json())
-            .then(messages => {
-                messages.forEach(appendMessage);
-                chatBox.scrollTop = chatBox.scrollHeight;
-                
-                // Update online count
-                document.getElementById("onlineCount").textContent = 
-                    `${document.querySelectorAll('.member-item').length} members`;
-            })
-            .catch(error => {
-                console.error('Error loading messages:', error);
-                chatBox.innerHTML = '<div class="text-center text-muted">Failed to load messages</div>';
-            });
-    };
-
-    // ✅ Real-time message receive
-    socket.on("group-message", data => {
-        appendMessage(data);
-    });
-
-    // ✅ Handle window resize
+    // Handle window resize
     window.addEventListener("resize", function() {
         if (window.innerWidth > 768) {
             document.getElementById("sidebar").classList.remove("hidden");
@@ -422,12 +452,17 @@ $members_query = mysqli_query($conn, "
         }
     });
 
-    // ✅ Click outside to close search
+    // Click outside to close search
     document.addEventListener("click", function(e) {
         if (!searchContainer.contains(e.target)) {
             searchResults.style.display = "none";
         }
     });
+
+    // Initialize when page loads
+    window.onload = function() {
+        initializeChat();
+    };
 </script>
 </body>
 </html>

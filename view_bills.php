@@ -1,5 +1,4 @@
 <?php
-include 'config.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 if (!isset($_SESSION['landlord_id'])) {
@@ -9,79 +8,47 @@ if (!isset($_SESSION['landlord_id'])) {
 
 $landlord_id = $_SESSION['landlord_id'];
 $landlord_name = $_SESSION['landlord_name'];
-$today = date('Y-m-d');
 
-// Handle delete action
+// Handle actions
 if (isset($_POST['delete_bill'])) {
-    $bill_id = (int)$_POST['bill_id'];
-    $delete_query = "DELETE FROM bills WHERE id = $bill_id AND landlord_id = '$landlord_id'";
-    if (mysqli_query($conn, $delete_query)) {
-        $success_message = "Bill deleted successfully!";
+    $api_url = 'https://rent-tracker-api.onrender.com';
+    $post_data = [
+        'action' => 'delete',
+        'bill_id' => $_POST['bill_id'],
+        'landlord_id' => $landlord_id
+    ];
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $api_url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post_data));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $response = curl_exec($ch);
+    curl_close($ch);
+    
+    $result = json_decode($response, true);
+    if ($result['success']) {
+        $success_message = $result['message'];
     } else {
-        $error_message = "Error deleting bill: " . mysqli_error($conn);
+        $error_message = $result['message'];
     }
 }
 
-// Handle remind action
-if (isset($_POST['send_reminder'])) {
-    $bill_id = (int)$_POST['bill_id'];
-    // Add your reminder logic here (email, SMS, notification, etc.)
-    $success_message = "Reminder sent successfully!";
+// Get bills data
+$api_url = 'https://rent-tracker-api.onrender.com/view_bills.php?landlord_id=' . $landlord_id;
+$response = file_get_contents($api_url);
+$data = json_decode($response, true);
+
+if ($data['success']) {
+    $bills = $data['bills'];
+    $stats = $data['stats'];
+    $total_bills = $stats['total_bills'];
+    $paid_bills = $stats['paid_bills'];
+    $overdue_bills = $stats['overdue_bills'];
+    $upcoming_bills = $stats['upcoming_bills'];
+    $total_amount = $stats['total_amount'];
+    $paid_amount = $stats['paid_amount'];
 }
-
-// Fetch bills data - Fixed query to properly get tenant information
-$query = "
-    SELECT DISTINCT b.id, b.bill_name, b.amount, b.due_date, b.status,
-           c.class_name, 
-           CONCAT(u.firstname, ' ', u.lastname) AS tenant_name
-    FROM bills b
-    LEFT JOIN classes c ON c.id = b.class_id
-    LEFT JOIN user_classes uc ON uc.class_id = c.id
-    LEFT JOIN users u ON u.id = uc.user_id AND u.users_role = 'tenant'
-    WHERE b.landlord_id = '$landlord_id'
-    ORDER BY b.due_date ASC
-";
-$result = mysqli_query($conn, $query);
-
-// Statistics
-$total_bills = 0;
-$paid_bills = 0;
-$overdue_bills = 0;
-$upcoming_bills = 0;
-$total_amount = 0;
-$paid_amount = 0;
-$bills = [];
-
-if ($result) {
-    while ($row = mysqli_fetch_assoc($result)) {
-        $bills[] = $row;
-        $total_bills++;
-        
-        // Fixed status checking - assuming status = 1 means paid, status = 0 means unpaid
-        if ($row['status'] == 1) {
-            $paid_bills++;
-            $paid_amount += $row['amount'];
-        }
-        $total_amount += $row['amount'];
-        
-        // Calculate days difference correctly
-        $due_date = new DateTime($row['due_date']);
-        $today_date = new DateTime($today);
-        $diff = $today_date->diff($due_date);
-        $days_diff = $diff->invert ? -$diff->days : $diff->days;
-
-        // Count overdue and upcoming bills only for unpaid bills
-        if ($row['status'] == 0) {
-            if ($days_diff < 0) {
-                $overdue_bills++;
-            } elseif ($days_diff >= 0 && $days_diff <= 7) {
-                $upcoming_bills++;
-            }
-        }
-    }
-}
-
-$filter = $_GET['filter'] ?? 'all';
 ?>
 
 <!DOCTYPE html>

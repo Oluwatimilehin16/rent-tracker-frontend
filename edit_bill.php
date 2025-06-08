@@ -1,5 +1,4 @@
 <?php
-include 'config.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 if (!isset($_SESSION['landlord_id'])) {
@@ -9,70 +8,11 @@ if (!isset($_SESSION['landlord_id'])) {
 
 $landlord_id = $_SESSION['landlord_id'];
 $bill_id = (int)$_GET['id'];
-$success_message = $error_message = "";
 
-// Handle form submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $bill_name = mysqli_real_escape_string($conn, $_POST['bill_name']);
-    $amount = (float)$_POST['amount'];
-    $due_date = mysqli_real_escape_string($conn, $_POST['due_date']);
-    $user_id = (int)$_POST['users_id'];
-
-    $status = isset($_POST['status']) ? 'paid' : 'unpaid';
-    $payment_date = null;
-
-   if ($status === 'paid' && !empty($_POST['payment_date'])) {
-    $payment_date = mysqli_real_escape_string($conn, $_POST['payment_date']);
-} elseif ($status === 'paid') {
-    $payment_date = date('Y-m-d');
+if (!$bill_id) {
+    header("Location: view_bills.php");
+    exit();
 }
-
-    $payment_date_sql = $payment_date ? "'$payment_date'" : "NULL";
-
-    $update_query = "
-        UPDATE bills SET 
-            bill_name = '$bill_name',
-            amount = $amount,
-            due_date = '$due_date',
-            status = '$status'
-        WHERE id = $bill_id AND landlord_id = '$landlord_id'
-    ";
-
-    if (mysqli_query($conn, $update_query)) {
-        $success_message = "✅ Bill updated successfully!";
-    } else {
-        $error_message = "❌ Failed to update bill: " . mysqli_error($conn);
-    }
-}
-
-// Fetch bill data to prefill the form
-$bill_query = "
-    SELECT b.*, u.firstname AS tenant_firstname, u.id AS users_id
-    FROM bills b
-    JOIN user_classes uc ON b.class_id = uc.class_id
-    JOIN users u ON uc.user_id = u.id
-    WHERE b.id = ?
-";
-
-$stmt = $conn->prepare($bill_query);
-$stmt->bind_param("i", $bill_id); // "i" means integer
-$stmt->execute();
-$bill_result = $stmt->get_result();
-$bill = $bill_result->fetch_assoc();
-
-// Fetch tenants under the landlord
-$tenants_result = mysqli_query($conn, "
-    SELECT u.id, u.firstname 
-    FROM users u 
-    INNER JOIN user_classes uc ON u.id = uc.user_id 
-    INNER JOIN classes c ON uc.class_id = c.id 
-    WHERE c.landlord_id = '$landlord_id'
-    GROUP BY u.id
-");
-
-
-// Fetch landlord's classes
-$classes_result = mysqli_query($conn, "SELECT id, class_name FROM classes WHERE landlord_id = '$landlord_id'");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -209,11 +149,6 @@ $classes_result = mysqli_query($conn, "SELECT id, class_name FROM classes WHERE 
             outline: none;
         }
 
-        .form-container textarea {
-            resize: vertical;
-            height: 100px;
-        }
-
         .checkbox-wrapper {
             display: flex;
             align-items: center;
@@ -241,6 +176,11 @@ $classes_result = mysqli_query($conn, "SELECT id, class_name FROM classes WHERE 
             background-color: #186c2c;
         }
 
+        .form-container .btn-primary:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
         .alert {
             padding: 15px;
             border-radius: 6px;
@@ -257,6 +197,17 @@ $classes_result = mysqli_query($conn, "SELECT id, class_name FROM classes WHERE 
         .alert-danger {
             background-color: #f8d7da;
             color: #721c24;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .payment-date-container {
+            display: none;
+            margin-top: 10px;
         }
 
         /* Mobile Styles */
@@ -319,26 +270,7 @@ $classes_result = mysqli_query($conn, "SELECT id, class_name FROM classes WHERE 
             .form-container input,
             .form-container select,
             .form-container textarea {
-                font-size: 16px; /* Prevents zoom on iOS */
-            }
-        }
-
-        @media (max-width: 480px) {
-            header {
-                padding: 10px 15px;
-            }
-
-            .content-wrapper {
-                padding: 10px;
-            }
-
-            .form-container {
-                padding: 15px;
-                margin: 0 5px;
-            }
-
-            .title {
-                font-size: 18px;
+                font-size: 16px;
             }
         }
     </style>
@@ -366,46 +298,189 @@ $classes_result = mysqli_query($conn, "SELECT id, class_name FROM classes WHERE 
     </header>
 
     <div class="content-wrapper">
-        <h1 class="title">Edit Bill for: <?= htmlspecialchars($bill['tenant_firstname'] ?? 'Tenant') ?></h1>
-        <?php if ($success_message): ?>
-            <div class="alert alert-success"><?php echo $success_message; ?></div>
-        <?php elseif ($error_message): ?>
-            <div class="alert alert-danger"><?php echo $error_message; ?></div>
-        <?php endif; ?>
+        <h1 class="title" id="page-title">Edit Bill</h1>
+        
+        <div id="alert-container"></div>
 
         <div class="form-container">
-            <form method="POST">
+            <div id="loading" class="loading">
+                <i class="fas fa-spinner fa-spin"></i> Loading bill data...
+            </div>
+
+            <form id="edit-bill-form" style="display: none;">
                 <label for="bill_name">Bill Name</label>
-                <input type="text" id="bill_name" name="bill_name" value="<?php echo htmlspecialchars($bill['bill_name']); ?>" required>
+                <input type="text" id="bill_name" name="bill_name" required>
 
                 <label for="amount">Amount (₦)</label>
-                <input type="number" id="amount" step="0.01" name="amount" value="<?php echo $bill['amount']; ?>" required>
+                <input type="number" id="amount" step="0.01" name="amount" required>
 
                 <label for="due_date">Due Date</label>
-                <input type="date" id="due_date" name="due_date" value="<?php echo $bill['due_date']; ?>" required>
+                <input type="date" id="due_date" name="due_date" required>
 
-               <label for="user_id">Assign to Tenant</label>
-                <select id="user_id" name="users_id" required>
-                 <option value="">Select a tenant</option>
-                    <?php while ($tenant = mysqli_fetch_assoc($tenants_result)): ?>
-                 <option value="<?= $tenant['id'] ?>" <?= $tenant['id'] == $bill['users_id'] ? 'selected' : '' ?>>
-                 <?= htmlspecialchars($tenant['firstname']) ?>
-                </option>
-            <?php endwhile; ?>
-            </select>
-
+                <label for="users_id">Assign to Tenant</label>
+                <select id="users_id" name="users_id" required>
+                    <option value="">Select a tenant</option>
+                </select>
 
                 <div class="checkbox-wrapper">
-                    <input type="checkbox" id="status" name="status" value="paid" <?= $bill['status'] === 'paid' ? 'checked' : '' ?>
+                    <input type="checkbox" id="status" name="status" value="paid" onchange="togglePaymentDate()">
                     <label for="status">Mark as Paid</label>
                 </div>
 
-                <button type="submit" class="btn-primary">Update Bill</button>
+                <div id="payment-date-container" class="payment-date-container">
+                    <label for="payment_date">Payment Date</label>
+                    <input type="date" id="payment_date" name="payment_date">
+                </div>
+
+                <button type="submit" class="btn-primary" id="submit-btn">
+                    <i class="fas fa-save"></i> Update Bill
+                </button>
             </form>
         </div>
     </div>
 
     <script>
+        const API_BASE_URL = 'https://rent-tracker-api.onrender.com';
+        const billId = <?php echo $bill_id; ?>;
+        const landlordId = <?php echo $landlord_id; ?>;
+
+        // Load bill data when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadBillData();
+        });
+
+        async function loadBillData() {
+            try {
+                const response = await fetch(`${API_BASE_URL}?id=${billId}&landlord_id=${landlordId}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    populateForm(result.data);
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('edit-bill-form').style.display = 'block';
+                } else {
+                    showAlert('error', result.message || 'Failed to load bill data');
+                }
+            } catch (error) {
+                console.error('Error loading bill data:', error);
+                showAlert('error', 'Failed to load bill data. Please try again.');
+            }
+        }
+
+        function populateForm(data) {
+            const { bill, tenants } = data;
+            
+            // Update page title
+            document.getElementById('page-title').textContent = `Edit Bill for: ${bill.tenant_firstname || 'Tenant'}`;
+            
+            // Populate form fields
+            document.getElementById('bill_name').value = bill.bill_name || '';
+            document.getElementById('amount').value = bill.amount || '';
+            document.getElementById('due_date').value = bill.due_date || '';
+            document.getElementById('status').checked = bill.status === 'paid';
+            document.getElementById('payment_date').value = bill.payment_date || '';
+            
+            // Populate tenants dropdown
+            const tenantsSelect = document.getElementById('users_id');
+            tenantsSelect.innerHTML = '<option value="">Select a tenant</option>';
+            
+            tenants.forEach(tenant => {
+                const option = document.createElement('option');
+                option.value = tenant.id;
+                option.textContent = tenant.firstname;
+                option.selected = tenant.id == bill.users_id;
+                tenantsSelect.appendChild(option);
+            });
+
+            // Show/hide payment date based on status
+            togglePaymentDate();
+        }
+
+        function togglePaymentDate() {
+            const statusCheckbox = document.getElementById('status');
+            const paymentDateContainer = document.getElementById('payment-date-container');
+            const paymentDateInput = document.getElementById('payment_date');
+            
+            if (statusCheckbox.checked) {
+                paymentDateContainer.style.display = 'block';
+                if (!paymentDateInput.value) {
+                    paymentDateInput.value = new Date().toISOString().split('T')[0];
+                }
+            } else {
+                paymentDateContainer.style.display = 'none';
+                paymentDateInput.value = '';
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('edit-bill-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submit-btn');
+            const originalText = submitBtn.innerHTML;
+            
+            // Disable button and show loading
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+            
+            try {
+                const formData = new FormData(this);
+                const data = {
+                    bill_name: formData.get('bill_name'),
+                    amount: parseFloat(formData.get('amount')),
+                    due_date: formData.get('due_date'),
+                    users_id: parseInt(formData.get('users_id')),
+                    status: formData.get('status') === 'paid',
+                    payment_date: formData.get('payment_date') || null
+                };
+
+                const response = await fetch(`${API_BASE_URL}?id=${billId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('success', result.message || 'Bill updated successfully!');
+                    // Optionally redirect after success
+                    setTimeout(() => {
+                        window.location.href = 'view_bills.php';
+                    }, 2000);
+                } else {
+                    showAlert('error', result.message || 'Failed to update bill');
+                }
+            } catch (error) {
+                console.error('Error updating bill:', error);
+                showAlert('error', 'Failed to update bill. Please try again.');
+            } finally {
+                // Re-enable button
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        });
+
+        function showAlert(type, message) {
+            const alertContainer = document.getElementById('alert-container');
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+            
+            alertContainer.innerHTML = `
+                <div class="alert ${alertClass}">
+                    ${message}
+                </div>
+            `;
+            
+            // Auto-hide success messages after 5 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    alertContainer.innerHTML = '';
+                }, 5000);
+            }
+        }
+
         function toggleMenu() {
             const nav = document.getElementById('main-nav');
             nav.classList.toggle('active');

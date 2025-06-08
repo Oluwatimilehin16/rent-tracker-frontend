@@ -1,5 +1,5 @@
 <?php
-include 'config.php';
+// Simple session check for initial page load
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -8,72 +8,7 @@ if (!isset($_SESSION['tenant_id']) || $_SESSION['users_role'] !== 'tenant') {
     header("Location: login.php");
     exit();
 }
-
-$tenant_id    = $_SESSION['tenant_id'];
-$tenant_email = $_SESSION['tenant_email']; // still available if needed
-$firstname    = $_SESSION['users_name'];
-
-// Check if tenant has joined any class
-$class_check = mysqli_query($conn, "SELECT * FROM class_members WHERE tenant_id = '$tenant_id'");
-if (mysqli_num_rows($class_check) == 0) {
-    header("Location: join_class.php");
-    exit();
-}
 ?>
-<?php
-$total_bills_result = mysqli_query($conn, "
-    SELECT SUM(amount) as total FROM bills 
-    WHERE class_id IN (SELECT class_id FROM class_members WHERE tenant_id = '$tenant_id')
-");
-
-$total_paid_result = mysqli_query($conn, "
-    SELECT SUM(b.amount) as paid FROM payments p 
-    JOIN bills b ON p.bill_id = b.id 
-    WHERE p.tenant_id = '$tenant_id'
-");
-
-$total_bills = mysqli_fetch_assoc($total_bills_result)['total'] ?? 0;
-$total_paid  = mysqli_fetch_assoc($total_paid_result)['paid'] ?? 0;
-$balance     = $total_bills - $total_paid;
-
-// Get counts for dashboard stats
-$overdue_count = 0;
-$due_soon_count = 0;
-$total_unpaid_count = 0;
-
-// Pre-calculate counts for summary cards
-$class_result_count = mysqli_query($conn, "
-    SELECT c.id AS class_id FROM class_members cm
-    JOIN classes c ON cm.class_id = c.id
-    WHERE cm.tenant_id = '$tenant_id'
-");
-
-while ($class = mysqli_fetch_assoc($class_result_count)) {
-    $class_id = $class['class_id'];
-    $bills = mysqli_query($conn, "SELECT id, due_date FROM bills WHERE class_id = '$class_id'");
-    
-    while ($bill = mysqli_fetch_assoc($bills)) {
-        $bill_id = $bill['id'];
-        $due_date = $bill['due_date'];
-        
-        $payment_check = mysqli_query($conn, "
-            SELECT * FROM payments 
-            WHERE bill_id = '$bill_id' AND tenant_id = '$tenant_id'
-        ");
-        $paid = mysqli_num_rows($payment_check) > 0;
-        
-        if (!$paid) {
-            $total_unpaid_count++;
-            if (strtotime($due_date) < time()) {
-                $overdue_count++;
-            } elseif ((strtotime($due_date) - time()) < (7 * 24 * 60 * 60)) {
-                $due_soon_count++;
-            }
-        }
-    }
-}
-?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -99,223 +34,232 @@ while ($class = mysqli_fetch_assoc($class_result_count)) {
 </header>
 
 <div class="dashboard">
-    <div class="welcome-section">
-        <div class="welcome">
-            <i class="fas fa-user-circle"></i>
-            Welcome back, <?php echo htmlspecialchars($firstname); ?>!
-        </div>
-        
-        <div class="stats-grid">
-            <div class="stat-card">
-                <h3>Total Bills</h3>
-                <div class="amount">₦<?php echo number_format($total_bills, 2); ?></div>
-                <div class="description">All assigned bills</div>
-            </div>
-            
-            <div class="stat-card">
-                <h3>Paid Amount</h3>
-                <div class="amount">₦<?php echo number_format($total_paid, 2); ?></div>
-                <div class="description">Successfully paid</div>
-            </div>
-            
-            <div class="stat-card balance">
-                <h3>Outstanding Balance</h3>
-                <div class="amount">₦<?php echo number_format($balance, 2); ?></div>
-                <div class="description">Amount pending</div>
-            </div>
-            
-            <div class="stat-card overdue">
-                <h3>Overdue Bills</h3>
-                <div class="amount"><?php echo $overdue_count; ?></div>
-                <div class="description">Require immediate attention</div>
-            </div>
-            
-            <div class="stat-card due-soon">
-                <h3>Due Soon</h3>
-                <div class="amount"><?php echo $due_soon_count; ?></div>
-                <div class="description">Due within 7 days</div>
-            </div>
-            
-            <div class="stat-card">
-                <h3>Total Unpaid</h3>
-                <div class="amount"><?php echo $total_unpaid_count; ?></div>
-                <div class="description">Pending payments</div>
-            </div>
+    <!-- Loading State -->
+    <div id="loadingState" class="loading-container">
+        <div class="spinner"></div>
+        <p>Loading your dashboard...</p>
+    </div>
+
+    <!-- Error State -->
+    <div id="errorState" class="error-container" style="display: none;">
+        <div class="error-message">
+            <i class="fas fa-exclamation-triangle"></i>
+            <h3>Something went wrong</h3>
+            <p id="errorMessage">Unable to load dashboard data. Please try again.</p>
+            <button onclick="loadDashboard()" class="retry-btn">
+                <i class="fas fa-redo"></i> Try Again
+            </button>
         </div>
     </div>
 
-    <div class="bills-section">
-        <div class="section-header">
-            <h3 class="section-title">
-                <i class="fas fa-file-invoice-dollar"></i>
-                Your Bills & Payments
-            </h3>
-            <div class="filter-buttons">
-                <button class="filter-btn active" onclick="filterBills('all')">All Bills</button>
-                <button class="filter-btn" onclick="filterBills('unpaid')">Unpaid</button>
-                <button class="filter-btn" onclick="filterBills('overdue')">Overdue</button>
-                <button class="filter-btn" onclick="filterBills('due-soon')">Due Soon</button>
+    <!-- Main Dashboard Content -->
+    <div id="dashboardContent" style="display: none;">
+        <div class="welcome-section">
+            <div class="welcome">
+                <i class="fas fa-user-circle"></i>
+                Welcome back, <span id="tenantName">...</span>!
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Bills</h3>
+                    <div class="amount" id="totalBills">₦0.00</div>
+                    <div class="description">All assigned bills</div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Paid Amount</h3>
+                    <div class="amount" id="totalPaid">₦0.00</div>
+                    <div class="description">Successfully paid</div>
+                </div>
+                
+                <div class="stat-card balance">
+                    <h3>Outstanding Balance</h3>
+                    <div class="amount" id="balance">₦0.00</div>
+                    <div class="description">Amount pending</div>
+                </div>
+                
+                <div class="stat-card overdue">
+                    <h3>Overdue Bills</h3>
+                    <div class="amount" id="overdueBills">0</div>
+                    <div class="description">Require immediate attention</div>
+                </div>
+                
+                <div class="stat-card due-soon">
+                    <h3>Due Soon</h3>
+                    <div class="amount" id="dueSoonBills">0</div>
+                    <div class="description">Due within 7 days</div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Total Unpaid</h3>
+                    <div class="amount" id="totalUnpaid">0</div>
+                    <div class="description">Pending payments</div>
+                </div>
             </div>
         </div>
 
-        <table class="bills-table" id="billsTable">
-            <thead>
-                <tr>
-                    <th><i class="fas fa-bolt"></i> Utility</th>
-                    <th><i class="fas fa-naira-sign"></i> Amount</th>
-                    <th><i class="fas fa-calendar"></i> Due Date</th>
-                    <th><i class="fas fa-check-circle"></i> Status</th>
-                    <th><i class="fas fa-user-tie"></i> Landlord</th>
-                    <th><i class="fas fa-sticky-note"></i> Notes</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php
-                // Get all classes tenant is part of
-                $class_result = mysqli_query($conn, "
-                    SELECT 
-                        c.id AS class_id, 
-                        u.firstname AS landlord_fname, 
-                        u.lastname AS landlord_lname 
-                    FROM class_members cm
-                    JOIN classes c ON cm.class_id = c.id
-                    JOIN users u ON c.landlord_id = u.id
-                    WHERE cm.tenant_id = '$tenant_id'
-                ");
+        <div class="bills-section">
+            <div class="section-header">
+                <h3 class="section-title">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                    Your Bills & Payments
+                </h3>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" onclick="filterBills('all')">All Bills</button>
+                    <button class="filter-btn" onclick="filterBills('unpaid')">Unpaid</button>
+                    <button class="filter-btn" onclick="filterBills('overdue')">Overdue</button>
+                    <button class="filter-btn" onclick="filterBills('due-soon')">Due Soon</button>
+                </div>
+            </div>
 
-                $has_bills = false;
-                while ($class = mysqli_fetch_assoc($class_result)) {
-                    $class_id      = $class['class_id'];
-                    $landlord_name = $class['landlord_fname'] . " " . $class['landlord_lname'];
-                    $landlord_initials = strtoupper(substr($class['landlord_fname'], 0, 1) . substr($class['landlord_lname'], 0, 1));
-
-                    // Get unique bills assigned to this class
-                    $bills = mysqli_query($conn, "SELECT DISTINCT id, bill_name, amount, due_date FROM bills WHERE class_id = '$class_id' ORDER BY due_date ASC");
-                    while ($bill = mysqli_fetch_assoc($bills)) {
-                        $has_bills = true;
-                        $bill_id   = $bill['id'];
-                        $bill_name = $bill['bill_name'];
-                        $amount    = $bill['amount'];
-                        $due_date  = $bill['due_date'];
-                        $due_soon = (strtotime($due_date) - time()) < (7 * 24 * 60 * 60); // due in < 7 days
-                        $is_overdue = strtotime($due_date) < time();
-
-                        // Check if this tenant has paid
-                        $payment_check = mysqli_query($conn, "
-                            SELECT * FROM payments 
-                            WHERE bill_id = '$bill_id' AND tenant_id = '$tenant_id'
-                        ");
-                        $paid = mysqli_num_rows($payment_check) > 0;
-
-                        $note = "";
-                        // Check if co-tenant(s) have paid
-                        $co_query = mysqli_query($conn, "
-                            SELECT tenant_id FROM class_members 
-                            WHERE class_id = '$class_id' AND tenant_id != '$tenant_id'
-                        ");
-
-                        while ($co = mysqli_fetch_assoc($co_query)) {
-                            $co_id = $co['tenant_id'];
-                            $co_paid = mysqli_query($conn, "
-                                SELECT * FROM payments 
-                                WHERE bill_id = '$bill_id' AND tenant_id = '$co_id'
-                            ");
-                            if (mysqli_num_rows($co_paid) > 0) {
-                                $note = "Co-tenant has paid";
-                                break;
-                            }
-                        }
-
-                        // Determine utility type for icon
-                        $utility_class = "utility-other";
-                        $utility_icon = "fas fa-file-invoice";
-                        $bill_lower = strtolower($bill_name);
-                        
-                        if (strpos($bill_lower, 'electric') !== false || strpos($bill_lower, 'power') !== false) {
-                            $utility_class = "utility-electricity";
-                            $utility_icon = "fas fa-bolt";
-                        } elseif (strpos($bill_lower, 'water') !== false) {
-                            $utility_class = "utility-water";
-                            $utility_icon = "fas fa-tint";
-                        } elseif (strpos($bill_lower, 'gas') !== false) {
-                            $utility_class = "utility-gas";
-                            $utility_icon = "fas fa-fire";
-                        } elseif (strpos($bill_lower, 'internet') !== false || strpos($bill_lower, 'wifi') !== false) {
-                            $utility_class = "utility-internet";
-                            $utility_icon = "fas fa-wifi";
-                        } elseif (strpos($bill_lower, 'rent') !== false) {
-                            $utility_class = "utility-rent";
-                            $utility_icon = "fas fa-home";
-                        }
-
-                        $row_class = "";
-                        $filter_class = "";
-                        if (!$paid) {
-                            $filter_class = "unpaid";
-                            if ($is_overdue) {
-                                $row_class = "overdue";
-                                $filter_class .= " overdue";
-                            } elseif ($due_soon) {
-                                $row_class = "due-soon";
-                                $filter_class .= " due-soon";
-                            }
-                        } else {
-                            $filter_class = "paid";
-                        }
-
-                        echo "<tr class='$row_class' data-filter='$filter_class'>
-                                <td>
-                                    <div style='display: flex; align-items: center;'>
-                                        <span class='utility-icon $utility_class'>
-                                            <i class='$utility_icon'></i>
-                                        </span>
-                                        <strong>$bill_name</strong>
-                                    </div>
-                                </td>
-                                <td><strong>₦" . number_format($amount, 2) . "</strong></td>
-                                <td class='due-date'>" . date('M d, Y', strtotime($due_date)) . "</td>
-                                <td>";
-                        
-                        if ($paid) {
-                            echo "<span class='status-badge status-paid'>Paid</span>";
-                        } else {
-                            echo "<a href='make_payment.php?bill_id=$bill_id' class='pay-btn'>Pay Now</a>";
-                        }
-                        
-                        echo "</td>
-                                <td>
-                                    <div class='landlord-info'>
-                                        <div class='landlord-avatar'>$landlord_initials</div>
-                                        <span>$landlord_name</span>
-                                    </div>
-                                </td>
-                                <td>";
-                        
-                        if ($note) {
-                            echo "<span class='note-tag'>$note</span>";
-                        } else {
-                            echo "-";
-                        }
-                        
-                        echo "</td>
-                            </tr>";
-                    }
-                }
-
-                if (!$has_bills) {
-                    echo "<tr><td colspan='6' class='no-bills'>
-                            <i class='fas fa-file-invoice'></i>
-                            <h3>No bills found</h3>
-                            <p>You don't have any bills assigned yet.</p>
-                          </td></tr>";
-                }
-                ?>
-            </tbody>
-        </table>
+            <table class="bills-table" id="billsTable">
+                <thead>
+                    <tr>
+                        <th><i class="fas fa-bolt"></i> Utility</th>
+                        <th><i class="fas fa-naira-sign"></i> Amount</th>
+                        <th><i class="fas fa-calendar"></i> Due Date</th>
+                        <th><i class="fas fa-check-circle"></i> Status</th>
+                        <th><i class="fas fa-user-tie"></i> Landlord</th>
+                        <th><i class="fas fa-sticky-note"></i> Notes</th>
+                    </tr>
+                </thead>
+                <tbody id="billsTableBody">
+                    <!-- Bills will be populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
 <script>
+const API_BASE_URL = 'https://rent-tracker-api.onrender.com'; 
+
+// Global variables
+let dashboardData = null;
+let currentFilter = 'all';
+
+// Load dashboard data on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadDashboard();
+});
+
+async function loadDashboard() {
+    showLoading();
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/dashboard_api.php`, {
+            method: 'GET',
+            credentials: 'include', // Include session cookies
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+            if (data.redirect) {
+                window.location.href = data.redirect;
+                return;
+            }
+            throw new Error(data.error || 'Failed to load dashboard data');
+        }
+
+        dashboardData = data.data;
+        populateDashboard(dashboardData);
+        showDashboard();
+
+    } catch (error) {
+        console.error('Dashboard loading error:', error);
+        showError(error.message);
+    }
+}
+
+function populateDashboard(data) {
+    // Populate tenant info
+    document.getElementById('tenantName').textContent = data.tenant.name;
+
+    // Populate stats
+    const stats = data.stats;
+    document.getElementById('totalBills').textContent = `₦${formatNumber(stats.total_bills)}`;
+    document.getElementById('totalPaid').textContent = `₦${formatNumber(stats.total_paid)}`;
+    document.getElementById('balance').textContent = `₦${formatNumber(stats.balance)}`;
+    document.getElementById('overdueBills').textContent = stats.overdue_count;
+    document.getElementById('dueSoonBills').textContent = stats.due_soon_count;
+    document.getElementById('totalUnpaid').textContent = stats.total_unpaid_count;
+
+    // Populate bills table
+    populateBillsTable(data.bills);
+}
+
+function populateBillsTable(bills) {
+    const tableBody = document.getElementById('billsTableBody');
+    
+    if (!bills || bills.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="6" class="no-bills">
+                    <i class="fas fa-file-invoice"></i>
+                    <h3>No bills found</h3>
+                    <p>You don't have any bills assigned yet.</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tableBody.innerHTML = '';
+    
+    bills.forEach(bill => {
+        const row = document.createElement('tr');
+        
+        // Add CSS classes for filtering and styling
+        let rowClasses = [];
+        if (bill.is_overdue && !bill.paid) {
+            rowClasses.push('overdue');
+        } else if (bill.due_soon && !bill.paid) {
+            rowClasses.push('due-soon');
+        }
+        
+        row.className = rowClasses.join(' ');
+        row.setAttribute('data-filter', bill.filter_classes.join(' '));
+
+        row.innerHTML = `
+            <td>
+                <div style="display: flex; align-items: center;">
+                    <span class="utility-icon ${bill.utility_type.class}">
+                        <i class="${bill.utility_type.icon}"></i>
+                    </span>
+                    <strong>${bill.name}</strong>
+                </div>
+            </td>
+            <td><strong>₦${formatNumber(bill.amount)}</strong></td>
+            <td class="due-date">${bill.due_date_formatted}</td>
+            <td>
+                ${bill.paid 
+                    ? '<span class="status-badge status-paid">Paid</span>'
+                    : `<a href="make_payment.php?bill_id=${bill.id}" class="pay-btn">Pay Now</a>`
+                }
+            </td>
+            <td>
+                <div class="landlord-info">
+                    <div class="landlord-avatar">${bill.landlord.initials}</div>
+                    <span>${bill.landlord.name}</span>
+                </div>
+            </td>
+            <td>
+                ${bill.note ? `<span class="note-tag">${bill.note}</span>` : '-'}
+            </td>
+        `;
+        
+        tableBody.appendChild(row);
+    });
+
+    // Add hover effects to pay buttons
+    addPayButtonEffects();
+}
+
 function filterBills(filter) {
     const table = document.getElementById('billsTable');
     const rows = table.querySelectorAll('tbody tr');
@@ -324,6 +268,8 @@ function filterBills(filter) {
     // Update active button
     buttons.forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
+    
+    currentFilter = filter;
     
     rows.forEach(row => {
         const filterData = row.getAttribute('data-filter');
@@ -345,8 +291,7 @@ function filterBills(filter) {
     });
 }
 
-// Add some interactive feedback
-document.addEventListener('DOMContentLoaded', function() {
+function addPayButtonEffects() {
     const payButtons = document.querySelectorAll('.pay-btn');
     payButtons.forEach(btn => {
         btn.addEventListener('mouseenter', function() {
@@ -356,8 +301,111 @@ document.addEventListener('DOMContentLoaded', function() {
             this.innerHTML = 'Pay Now';
         });
     });
-});
+}
+
+// Utility functions
+function formatNumber(num) {
+    return new Intl.NumberFormat('en-NG', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(num);
+}
+
+function showLoading() {
+    document.getElementById('loadingState').style.display = 'block';
+    document.getElementById('errorState').style.display = 'none';
+    document.getElementById('dashboardContent').style.display = 'none';
+}
+
+function showError(message) {
+    document.getElementById('errorMessage').textContent = message;
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('errorState').style.display = 'block';
+    document.getElementById('dashboardContent').style.display = 'none';
+}
+
+function showDashboard() {
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('errorState').style.display = 'none';
+    document.getElementById('dashboardContent').style.display = 'block';
+}
+
+// Auto-refresh dashboard every 5 minutes
+setInterval(loadDashboard, 5 * 60 * 1000);
 </script>
+
+<style>
+/* Loading and Error States */
+.loading-container, .error-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    text-align: center;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.error-message {
+    max-width: 400px;
+}
+
+.error-message i {
+    font-size: 48px;
+    color: #dc3545;
+    margin-bottom: 20px;
+}
+
+.retry-btn {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 20px;
+}
+
+.retry-btn:hover {
+    background: #0056b3;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 15px;
+    }
+    
+    .bills-table {
+        font-size: 14px;
+    }
+    
+    .filter-buttons {
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+    
+    .filter-btn {
+        font-size: 12px;
+        padding: 8px 12px;
+    }
+}
+</style>
 
 </body>
 </html>

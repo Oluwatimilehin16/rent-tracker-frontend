@@ -1,5 +1,4 @@
 <?php
-include 'config.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 if (!isset($_SESSION['landlord_id'])) {
@@ -10,33 +9,25 @@ if (!isset($_SESSION['landlord_id'])) {
 $landlord_id = $_SESSION['landlord_id'];
 $bill_id = (int)$_GET['id'];
 
-// Fetch bill details
-$query = "
-    SELECT b.*, c.class_name, 
-           CONCAT(u.firstname, ' ', u.lastname) AS tenant_name,
-           u.email AS tenant_email
-    FROM bills b
-    LEFT JOIN classes c ON c.id = b.class_id
-    LEFT JOIN user_classes uc ON uc.class_id = c.id
-    LEFT JOIN users u ON u.id = uc.user_id AND u.users_role = 'tenant'
-    WHERE b.id = $bill_id AND b.landlord_id = '$landlord_id'
-    LIMIT 1
-";
+// Call API instead of direct database query
+$api_url = 'https://rent-tracker-api.onrender.com/view_bill.php?landlord_id=' . $landlord_id . '&bill_id=' . $bill_id;
 
-$result = mysqli_query($conn, $query);
-$bill = mysqli_fetch_assoc($result);
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $api_url);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = curl_exec($ch);
+curl_close($ch);
 
-if (!$bill) {
+$result = json_decode($response, true);
+
+if (!$result['success']) {
     header("Location: view_bills.php");
     exit();
 }
 
-// Calculate due status
-$today = date('Y-m-d');
-$due_date = new DateTime($bill['due_date']);
-$today_date = new DateTime($today);
-$diff = $today_date->diff($due_date);
-$days_diff = $diff->invert ? -$diff->days : $diff->days;
+$bill = $result['bill'];
+$days_diff = $result['due_status']['days_diff'];
+$is_overdue = $result['due_status']['is_overdue'];
 ?>
 
 <!DOCTYPE html>

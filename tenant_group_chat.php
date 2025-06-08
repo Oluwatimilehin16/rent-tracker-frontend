@@ -1,5 +1,4 @@
 <?php
-include 'config.php';
 session_start();
 
 // Ensure tenant is logged in
@@ -10,92 +9,30 @@ if (!isset($_SESSION['tenant_id'])) {
 
 $tenant_id = $_SESSION['tenant_id'];
 
-// Fetch class IDs the tenant belongs to
-$tenant_class_ids = [];
-$stmt = $conn->prepare("SELECT class_id FROM user_classes WHERE user_id = ?");
-$stmt->bind_param("i", $tenant_id);
-$stmt->execute();
-$result = $stmt->get_result();
-while ($row = $result->fetch_assoc()) {
-    $tenant_class_ids[] = $row['class_id'];
-}
-$stmt->close();
+// Call API instead of direct database query
+$api_url = 'https://rent-tracker-api.onrender.com/tenant_groups.php?tenant_id=' . $tenant_id;
 
-if (empty($tenant_class_ids)) {
-    // Show beautiful no groups message
-    $no_groups = true;
-    $groups_data = [];
-} else {
-    // Build placeholders for prepared statement
-    $class_ids_placeholder = implode(",", array_fill(0, count($tenant_class_ids), '?'));
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $api_url);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = curl_exec($ch);
+curl_close($ch);
 
-    // Simplified query without user_group_activity table
- $query = "
-    SELECT gc.id, gc.name, u.lastname AS landlord_name,
-        (SELECT COUNT(*) FROM group_chat_classes gcc_sub WHERE gcc_sub.group_id = gc.id) AS class_count,
-        (SELECT COUNT(*) FROM group_chat_messages gcm WHERE gcm.group_id = gc.id) AS message_count,
-        (SELECT COUNT(DISTINCT uc.user_id)
-         FROM user_classes uc
-         JOIN group_chat_classes gcc2 ON uc.class_id = gcc2.class_id
-         WHERE gcc2.group_id = gc.id
-        ) AS active_members,
-        (SELECT MAX(gcm3.timestamp) FROM group_chat_messages gcm3 WHERE gcm3.group_id = gc.id) AS last_activity
-    FROM group_chats gc
-    JOIN users u ON gc.landlord_id = u.id
-    JOIN group_chat_classes gcc ON gc.id = gcc.group_id
-    WHERE gcc.class_id IN ($class_ids_placeholder)
-    GROUP BY gc.id
-    ORDER BY last_activity DESC
-";
+$result = json_decode($response, true);
 
-
-
-    $stmt = $conn->prepare($query);
-    $types = str_repeat("i", count($tenant_class_ids));
-    $stmt->bind_param($types, ...$tenant_class_ids);
-    $stmt->execute();
-    $groups = $stmt->get_result();
-    
-    $groups_data = [];
-    while ($row = $groups->fetch_assoc()) {
-        $groups_data[] = $row;
-    }
+if ($result['success']) {
+    $groups_data = $result['groups'];
+    $total_groups = $result['stats']['total_groups'];
+    $active_groups = $result['stats']['active_groups'];
+    $last_activity_formatted = $result['stats']['last_activity'];
     $no_groups = empty($groups_data);
+} else {
+    $groups_data = [];
+    $no_groups = true;
+    $total_groups = 0;
+    $active_groups = 0;
+    $last_activity_formatted = 'No activity';
 }
-
-// Calculate statistics
-$total_groups = count($groups_data);
-$active_groups = 0;
-$last_activity_time = null;
-
-foreach ($groups_data as $group) {
-    if ($group['message_count'] > 0) {
-        $active_groups++;
-    }
-    if ($group['last_activity'] && (!$last_activity_time || $group['last_activity'] > $last_activity_time)) {
-        $last_activity_time = $group['last_activity'];
-    }
-}
-
-// Function to format time difference
-function timeAgo($datetime) {
-    if (!$datetime) return 'No activity';
-
-    $now = new DateTime('now', new DateTimeZone('UTC'));  // or your timezone
-    $past = new DateTime($datetime, new DateTimeZone('UTC'));
-
-    $diff = $now->diff($past);
-
-    if ($diff->y > 0) return $diff->y . 'y ago';
-    if ($diff->m > 0) return $diff->m . 'mo ago';
-    if ($diff->d > 0) return $diff->d . 'd ago';
-    if ($diff->h > 0) return $diff->h . 'h ago';
-    if ($diff->i > 0) return $diff->i . 'm ago';
-    return 'Just now';
-}
-
-
-$last_activity_formatted = $last_activity_time ? timeAgo($last_activity_time) : 'No activity';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -202,7 +139,7 @@ $last_activity_formatted = $last_activity_time ? timeAgo($last_activity_time) : 
 
                         <div class="last-activity">
                             <i class="fas fa-clock"></i>
-                            Last message: <?= timeAgo($group['last_activity']) ?>
+                            Last message: <?=  $last_activity_formatted;  ?>
                         </div>
 
                         <div class="action-buttons">

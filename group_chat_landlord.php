@@ -1,5 +1,4 @@
 <?php
-include 'config.php';
 session_start();
 
 // ✅ Ensure landlord is logged in
@@ -12,42 +11,15 @@ $landlord_id = $_SESSION['landlord_id'];
 $landlord_name = $_SESSION['landlord_name']; // Make sure this is stored at login
 $group_id = intval($_GET['group_id'] ?? 0);
 
-// ✅ Verify landlord owns this group chat
-$check_access = mysqli_query($conn, "
-    SELECT name FROM group_chats 
-    WHERE id = '$group_id' AND landlord_id = '$landlord_id'
-");
-
-if (mysqli_num_rows($check_access) == 0) {
-    echo "Access denied.";
-    exit();
-}
-
-$group = mysqli_fetch_assoc($check_access);
-
-// ✅ Get group members from 'users' table (no need for a separate landlords table)
-$members_query = mysqli_query($conn, "
-    SELECT u.id, u.firstname, u.email, 'tenant' as role 
-    FROM users u 
-    JOIN user_classes uc ON u.id = uc.user_id
-    JOIN group_chat_classes gcc ON uc.class_id = gcc.class_id
-    WHERE gcc.group_id = '$group_id'
-
-    UNION
-
-    SELECT u.id, u.firstname, u.email, 'landlord' as role
-    FROM users u
-    WHERE u.id = '$landlord_id'
-");
+// Set your API base URL
+$API_BASE_URL = "https://rent-tracker-api.onrender.com"; // Replace with your actual API URL
 
 ?>
-
-
 
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Group Chat (Landlord): <?php echo htmlspecialchars($group['name']); ?></title>
+    <title>Group Chat (Landlord)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" type="text/css" href="group_chat_landlord.css">
 </head>
@@ -62,35 +34,24 @@ $members_query = mysqli_query($conn, "
     </div>
 
     <div class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-        <span>Group Members</span>
-    </div>
+        <div class="sidebar-header">
+            <span>Group Members</span>
+        </div>
         
         <div class="member-list" id="memberList">
-            <?php while ($member = mysqli_fetch_assoc($members_query)): ?>
-            <div class="member-item" data-user-id="<?php echo $member['id']; ?>" data-role="<?php echo $member['role']; ?>">
-                <div class="member-avatar">
-                    <?php echo strtoupper(substr($member['firstname'], 0, 1)); ?>
-                </div>
-                <div class="member-info">
-                    <div class="member-name"><?php echo htmlspecialchars($member['firstname']); ?></div>
-                    <div class="member-role"><?php echo $member['role']; ?></div>
-                </div>
-                <div class="online-indicator" style="display: none;"></div>
-            </div>
-            <?php endwhile; ?>
+            <!-- Members will be loaded via API -->
         </div>
    
-       <div class="sidebar-footer">
-        <a href="landlord_group_chats.php" class="dashboard-button">← Back to Dashboard</a>
+        <div class="sidebar-footer">
+            <a href="landlord_group_chats.php" class="dashboard-button">← Back to Dashboard</a>
+        </div>
     </div>
- </div>
 
     <!-- Chat Area -->
     <div class="chat-wrapper">
         <div class="chat-header">
             <div>
-                <span><?php echo htmlspecialchars($group['name']); ?></span>
+                <span id="groupName">Loading...</span>
                 <div style="font-size: 12px; font-weight: normal; opacity: 0.8;" id="onlineCount">
                     Loading members...
                 </div>
@@ -126,12 +87,15 @@ $members_query = mysqli_query($conn, "
 <!-- ✅ Socket.IO -->
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script>
+    // Configuration
+    const API_BASE_URL = "<?php echo $API_BASE_URL; ?>"; // Your API base URL
     const socket = io("https://rent-tracker-backend.onrender.com"); 
     const groupId = <?php echo $group_id; ?>;
     const senderId = <?php echo $landlord_id; ?>;
     const senderName = <?php echo json_encode($landlord_name); ?>;
     const senderRole = "landlord";
 
+    // DOM elements
     const chatBox = document.getElementById("chat-box");
     const messageInput = document.getElementById("messageInput");
     const sendBtn = document.getElementById("sendBtn");
@@ -140,12 +104,127 @@ $members_query = mysqli_query($conn, "
     const searchContainer = document.getElementById("searchContainer");
     const searchInput = document.getElementById("searchInput");
     const searchResults = document.getElementById("searchResults");
+    const memberList = document.getElementById("memberList");
+    const groupNameElement = document.getElementById("groupName");
+    const onlineCountElement = document.getElementById("onlineCount");
 
+    // State variables
     let isTyping = false;
     let typingTimeout;
     let allMessages = [];
     let lastMessageSender = null;
     let lastMessageTime = null;
+    let groupData = null;
+    let membersData = [];
+
+    // ✅ API Helper Functions
+    async function apiRequest(endpoint, options = {}) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/${endpoint}`, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                },
+                ...options
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.message || 'API request failed');
+            }
+            
+            return data;
+        } catch (error) {
+            console.error('API Error:', error);
+            throw error;
+        }
+    }
+
+    // ✅ Verify access to group
+    async function verifyGroupAccess() {
+        try {
+            const response = await apiRequest(`group_chat_access_tenant_api.php?landlord_id=${senderId}&group_id=${groupId}`);
+            
+            if (response.success) {
+                groupData = response.data.group;
+                groupNameElement.textContent = groupData.name;
+                return true;
+            } else {
+                alert('Access denied to this group chat');
+                window.location.href = 'landlord_group_chats.php';
+                return false;
+            }
+        } catch (error) {
+            console.error('Error verifying group access:', error);
+            alert('Error accessing group chat');
+            window.location.href = 'landlord_group_chats.php';
+            return false;
+        }
+    }
+
+    // ✅ Load group members
+    async function loadGroupMembers() {
+        try {
+            const response = await apiRequest(`group_members_api.php?group_id=${groupId}&landlord_id=${senderId}`);
+            
+            if (response.success) {
+                membersData = response.data.members;
+                renderMembers();
+                onlineCountElement.textContent = `${membersData.length} members`;
+            } else {
+                console.error('Failed to load members:', response.message);
+                memberList.innerHTML = '<div class="error">Failed to load members</div>';
+            }
+        } catch (error) {
+            console.error('Error loading members:', error);
+            memberList.innerHTML = '<div class="error">Error loading members</div>';
+        }
+    }
+
+    // ✅ Render members in sidebar
+    function renderMembers() {
+        memberList.innerHTML = '';
+        
+        membersData.forEach(member => {
+            const memberDiv = document.createElement('div');
+            memberDiv.className = 'member-item';
+            memberDiv.setAttribute('data-user-id', member.id);
+            memberDiv.setAttribute('data-role', member.role);
+            
+            memberDiv.innerHTML = `
+                <div class="member-avatar">
+                    ${member.avatar}
+                </div>
+                <div class="member-info">
+                    <div class="member-name">${member.firstname}</div>
+                    <div class="member-role">${member.role}</div>
+                </div>
+                <div class="online-indicator" style="display: none;"></div>
+            `;
+            
+            memberList.appendChild(memberDiv);
+        });
+    }
+
+    // ✅ Load past messages|
+    async function loadMessages() {
+        try {
+            const response = await apiRequest(`group_messages_api.php?group_id=${groupId}&landlord_id=${senderId}&limit=50&offset=0`);
+            
+            if (response.success) {
+                allMessages = response.data.messages;
+                allMessages.forEach(appendMessage);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            } else {
+                console.error('Failed to load messages:', response.message);
+                chatBox.innerHTML = '<div class="text-center text-muted">Failed to load messages</div>';
+            }
+        } catch (error) {
+            console.error('Error loading messages:', error);
+            chatBox.innerHTML = '<div class="text-center text-muted">Error loading messages</div>';
+        }
+    }
 
     // ✅ Connection status
     socket.on("connect", () => {
@@ -163,7 +242,7 @@ $members_query = mysqli_query($conn, "
     // ✅ Join group
     socket.emit("join-group", groupId);
 
-    // ✅ Auto-resize textarea
+    // ✅ Auto-resize textarea and typing indicator
     messageInput.addEventListener('input', function() {
         this.style.height = 'auto';
         this.style.height = (this.scrollHeight) + 'px';
@@ -242,7 +321,9 @@ $members_query = mysqli_query($conn, "
 
     // ✅ Append message with grouping
     function appendMessage(data) {
-        allMessages.push(data);
+        if (!allMessages.some(msg => msg.id === data.id)) {
+            allMessages.push(data);
+        }
         
         const isMe = data.sender_id == senderId;
         const isGrouped = shouldGroupMessage(data);
@@ -343,7 +424,6 @@ $members_query = mysqli_query($conn, "
                     <div style="font-size: 0.8em; color: #666;">${formatLocalTime(result.timestamp)}</div>
                 `;
                 div.addEventListener("click", () => {
-                    // Highlight the message (you can implement scrolling to message here)
                     searchResults.style.display = "none";
                     searchInput.value = "";
                 });
@@ -366,31 +446,30 @@ $members_query = mysqli_query($conn, "
 
     // ✅ Toggle sidebar
     function toggleSidebar() {
-    const sidebar = document.getElementById("sidebar");
-    const toggleBtn = document.getElementById("toggleBtn");
+        const sidebar = document.getElementById("sidebar");
+        const toggleBtn = document.getElementById("toggleBtn");
 
-    // Toggle "hidden" class instead of manually setting display styles
-    sidebar.classList.toggle("hidden");
-    toggleBtn.textContent = sidebar.classList.contains("hidden") ? "Show" : "Hide";
-}
+        sidebar.classList.toggle("hidden");
+        toggleBtn.textContent = sidebar.classList.contains("hidden") ? "Show" : "Hide";
+    }
 
-
-    // ✅ Load past messages
-    window.onload = function () {
-        fetch(`fetch_group_messages.php?group_id=${groupId}`)
-            .then(response => response.json())
-            .then(messages => {
-                messages.forEach(appendMessage);
-                chatBox.scrollTop = chatBox.scrollHeight;
-                
-                // Update online count
-                document.getElementById("onlineCount").textContent = 
-                    `${document.querySelectorAll('.member-item').length} members`;
-            })
-            .catch(error => {
-                console.error('Error loading messages:', error);
-                chatBox.innerHTML = '<div class="text-center text-muted">Failed to load messages</div>';
-            });
+    // ✅ Initialize page
+    window.onload = async function () {
+        try {
+            // Verify access first
+            const hasAccess = await verifyGroupAccess();
+            if (!hasAccess) return;
+            
+            // Load members and messages in parallel
+            await Promise.all([
+                loadGroupMembers(),
+                loadMessages()
+            ]);
+            
+        } catch (error) {
+            console.error('Error initializing page:', error);
+            alert('Error loading chat. Please try again.');
+        }
     };
 
     // ✅ Real-time message receive
