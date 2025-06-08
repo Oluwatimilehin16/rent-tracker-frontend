@@ -105,8 +105,6 @@ $landlord_name = $_SESSION['landlord_name'];
 const API_BASE_URL = 'https://rent-tracker-api.onrender.com';
 
 // API helper class
-// Updated JavaScript in add_bill.php
-// Updated JavaScript in add_bill.php
 class BillAPI {
     constructor(baseUrl) {
         this.baseUrl = baseUrl;
@@ -115,13 +113,12 @@ class BillAPI {
     }
 
     async getClassesAndBills() {
-        // Changed to GET request since landlord_id is already in session
         const response = await fetch(`${this.baseUrl}/landlord_classes_api.php`, {
-            method: 'GET',  // ← Changed from POST to GET
+            method: 'GET',
             headers: {
                 'Content-Type': 'application/json'
-            }
-            // Removed body since it's a GET request and landlord_id comes from session
+            },
+            credentials: 'include'  // ← Add this to include cookies/session
         });
 
         const data = await response.json();
@@ -142,7 +139,8 @@ class BillAPI {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(billData)
+            body: JSON.stringify(billData),
+            credentials: 'include'  // ← Add this to include cookies/session
         });
 
         const data = await response.json();
