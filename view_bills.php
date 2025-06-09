@@ -1,4 +1,5 @@
 <?php
+// Only keep session validation - remove all database operations
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 if (!isset($_SESSION['landlord_id'])) {
@@ -8,47 +9,6 @@ if (!isset($_SESSION['landlord_id'])) {
 
 $landlord_id = $_SESSION['landlord_id'];
 $landlord_name = $_SESSION['landlord_name'];
-
-// Handle actions
-if (isset($_POST['delete_bill'])) {
-    $api_url = 'https://rent-tracker-api.onrender.com';
-    $post_data = [
-        'action' => 'delete',
-        'bill_id' => $_POST['bill_id'],
-        'landlord_id' => $landlord_id
-    ];
-    
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $api_url);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post_data));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    $response = curl_exec($ch);
-    curl_close($ch);
-    
-    $result = json_decode($response, true);
-    if ($result['success']) {
-        $success_message = $result['message'];
-    } else {
-        $error_message = $result['message'];
-    }
-}
-
-// Get bills data
-$api_url = 'https://rent-tracker-api.onrender.com/view_bills.php?landlord_id=' . $landlord_id;
-$response = file_get_contents($api_url);
-$data = json_decode($response, true);
-
-if ($data['success']) {
-    $bills = $data['bills'];
-    $stats = $data['stats'];
-    $total_bills = $stats['total_bills'];
-    $paid_bills = $stats['paid_bills'];
-    $overdue_bills = $stats['overdue_bills'];
-    $upcoming_bills = $stats['upcoming_bills'];
-    $total_amount = $stats['total_amount'];
-    $paid_amount = $stats['paid_amount'];
-}
 ?>
 
 <!DOCTYPE html>
@@ -127,6 +87,28 @@ if ($data['success']) {
             background-color: #f8d7da;
             border-color: #f5c6cb;
         }
+
+        /* Loading state styles */
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -153,36 +135,28 @@ if ($data['success']) {
     <div class="content-wrapper">
         <h1 class="title">Bills Dashboard for <?php echo htmlspecialchars($landlord_name); ?> 👋</h1>
 
-        <?php if (isset($success_message)): ?>
-            <div class="alert alert-success"><?php echo $success_message; ?></div>
-        <?php endif; ?>
-        
-        <?php if (isset($error_message)): ?>
-            <div class="alert alert-danger"><?php echo $error_message; ?></div>
-        <?php endif; ?>
-
         <!-- Dashboard Cards -->
         <div class="dashboard-cards">
             <div class="card card-total">
                 <div class="card-icon"><i class="fas fa-file-invoice"></i></div>
-                <div class="card-value"><?php echo $total_bills; ?></div>
+                <div class="card-value">0</div>
                 <div class="card-label">Total Bills</div>
-                <div class="card-money">₦<?php echo number_format($total_amount, 2); ?></div>
+                <div class="card-money">₦0.00</div>
             </div>
             <div class="card card-paid">
                 <div class="card-icon"><i class="fas fa-check-circle"></i></div>
-                <div class="card-value"><?php echo $paid_bills; ?></div>
+                <div class="card-value">0</div>
                 <div class="card-label">Paid Bills</div>
-                <div class="card-money">₦<?php echo number_format($paid_amount, 2); ?></div>
+                <div class="card-money">₦0.00</div>
             </div>
             <div class="card card-overdue">
                 <div class="card-icon"><i class="fas fa-exclamation-circle"></i></div>
-                <div class="card-value"><?php echo $overdue_bills; ?></div>
+                <div class="card-value">0</div>
                 <div class="card-label">Overdue</div>
             </div>
             <div class="card card-upcoming">
                 <div class="card-icon"><i class="fas fa-clock"></i></div>
-                <div class="card-value"><?php echo $upcoming_bills; ?></div>
+                <div class="card-value">0</div>
                 <div class="card-label">Due Soon</div>
             </div>
         </div>
@@ -190,23 +164,26 @@ if ($data['success']) {
         <!-- Filters -->
         <div class="controls">
             <div class="filter-controls">
-                <?php
-                $filters = [
-                    'all' => ['All', $total_bills],
-                    'paid' => ['Paid', $paid_bills],
-                    'unpaid' => ['Unpaid', $total_bills - $paid_bills],
-                    'overdue' => ['Overdue', $overdue_bills],
-                    'upcoming' => ['Upcoming', $upcoming_bills]
-                ];
-
-                foreach ($filters as $key => [$label, $count]) {
-                    $active = $filter === $key ? 'active' : '';
-                    echo "<a href='?filter=$key' class='filter-btn $active'>
-                        <i class='fas fa-filter'></i> $label 
-                        <span class='filter-badge'>$count</span>
-                    </a>";
-                }
-                ?>
+                <a href="?filter=all" class="filter-btn active">
+                    <i class="fas fa-filter"></i> All 
+                    <span class="filter-badge">0</span>
+                </a>
+                <a href="?filter=paid" class="filter-btn">
+                    <i class="fas fa-filter"></i> Paid 
+                    <span class="filter-badge">0</span>
+                </a>
+                <a href="?filter=unpaid" class="filter-btn">
+                    <i class="fas fa-filter"></i> Unpaid 
+                    <span class="filter-badge">0</span>
+                </a>
+                <a href="?filter=overdue" class="filter-btn">
+                    <i class="fas fa-filter"></i> Overdue 
+                    <span class="filter-badge">0</span>
+                </a>
+                <a href="?filter=upcoming" class="filter-btn">
+                    <i class="fas fa-filter"></i> Upcoming 
+                    <span class="filter-badge">0</span>
+                </a>
             </div>
         </div>
 
@@ -225,68 +202,11 @@ if ($data['success']) {
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($bills as $bill):
-                        $due_date = new DateTime($bill['due_date']);
-                        $today_date = new DateTime($today);
-                        $diff = $today_date->diff($due_date);
-                        $days_diff = $diff->invert ? -$diff->days : $diff->days;
-
-                        // Fixed filter logic
-                        $show_bill = true;
-                        if ($filter === 'paid' && $bill['status'] != 1) $show_bill = false;
-                        if ($filter === 'unpaid' && $bill['status'] == 1) $show_bill = false;
-                        if ($filter === 'overdue' && ($bill['status'] == 1 || $days_diff >= 0)) $show_bill = false;
-                        if ($filter === 'upcoming' && ($bill['status'] == 1 || $days_diff < 0 || $days_diff > 7)) $show_bill = false;
-                        
-                        if (!$show_bill) continue;
-
-                        // Fixed due text logic
-                        if ($bill['status'] == 1) {
-                            $payment_date = $bill['payment_date'] ? $bill['payment_date'] : $today;
-                            $due_text = 'Paid on ' . date('M j, Y', strtotime($payment_date));
-                            $due_class = 'due-paid';
-                        } else {
-                            if ($days_diff < 0) {
-                                $due_text = "Overdue by " . abs($days_diff) . " days";
-                                $due_class = 'due-overdue';
-                            } elseif ($days_diff <= 7) {
-                                $due_text = $days_diff == 0 ? "Due today" : "Due in $days_diff days";
-                                $due_class = 'due-soon';
-                            } else {
-                                $due_text = date('F j, Y', strtotime($bill['due_date']));
-                                $due_class = 'due-normal';
-                            }
-                        }
-                        ?>
-                        <tr>
-                            <td><?php echo htmlspecialchars($bill['class_name'] ?? 'N/A'); ?></td>
-                            <td><?php echo htmlspecialchars($bill['bill_name']); ?></td>
-                            <td><?php echo htmlspecialchars($bill['tenant_name'] ?? 'No tenant assigned'); ?></td>
-                            <td>₦<?php echo number_format($bill['amount'], 2); ?></td>
-                            <td><span class="due-date <?php echo $due_class; ?>"><?php echo $due_text; ?></span></td>
-                            <td>
-                                <span class="status-badge <?php echo $bill['status'] ? 'status-paid' : 'status-not-paid'; ?>">
-                                    <?php echo $bill['status'] ? 'Paid' : 'Not Paid'; ?>
-                                </span>
-                            </td>
-                            <td>
-                                <a href="view_bill.php?id=<?php echo $bill['id']; ?>" title="View" class="action-btn">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                                <a href="edit_bill.php?id=<?php echo $bill['id']; ?>" title="Edit" class="action-btn">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <?php if ($bill['status'] == 0): ?>
-                                    <button onclick="showRemindModal(<?php echo $bill['id']; ?>)" title="Remind" class="action-btn btn-remind">
-                                        <i class="fas fa-bell"></i>
-                                    </button>
-                                <?php endif; ?>
-                                <button onclick="showDeleteModal(<?php echo $bill['id']; ?>)" title="Delete" class="action-btn btn-delete">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 20px;">
+                            <div class="spinner"></div>Loading bills...
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -299,11 +219,9 @@ if ($data['success']) {
         <h3>Confirm Delete</h3>
         <p>Are you sure you want to delete this bill? This action cannot be undone.</p>
         <div class="modal-buttons">
-            <form method="POST" style="display: inline;">
-                <input type="hidden" name="bill_id" id="deleteBillId">
-                <button type="submit" name="delete_bill" class="btn-danger">Delete</button>
-                <button type="button" onclick="closeModal('deleteModal')" class="btn-secondary">Cancel</button>
-            </form>
+            <input type="hidden" id="deleteBillId">
+            <button type="button" onclick="handleDeleteConfirm()" class="btn-danger">Delete</button>
+            <button type="button" onclick="closeModal('deleteModal')" class="btn-secondary">Cancel</button>
         </div>
     </div>
 </div>
@@ -314,35 +232,70 @@ if ($data['success']) {
         <h3>Send Reminder</h3>
         <p>Send a payment reminder to the tenant for this bill?</p>
         <div class="modal-buttons">
-            <form method="POST" style="display: inline;">
-                <input type="hidden" name="bill_id" id="remindBillId">
-                <button type="submit" name="send_reminder" class="btn-primary">Send Reminder</button>
-                <button type="button" onclick="closeModal('remindModal')" class="btn-secondary">Cancel</button>
-            </form>
+            <input type="hidden" id="remindBillId">
+            <button type="button" onclick="handleRemindConfirm()" class="btn-primary">Send Reminder</button>
+            <button type="button" onclick="closeModal('remindModal')" class="btn-secondary">Cancel</button>
         </div>
     </div>
 </div>
 
 <script>
-    function toggleMenu() {
-        document.getElementById('main-nav').classList.toggle('active');
+    // Pass PHP session data to JavaScript
+    window.landlordId = '<?php echo $landlord_id; ?>';
+    window.landlordName = '<?php echo htmlspecialchars($landlord_name); ?>';
+</script>
+<script>
+    // Configuration - Update these URLs to your API endpoints
+const API_BASE_URL = 'https://rent-tracker-api.onrender.com'; // Replace with your actual API domain
+const API_ENDPOINTS = {
+    getBills: `${API_BASE_URL}/get_bills_api.php`,
+    deleteBill: `${API_BASE_URL}/delete_bill_api.php`,
+    sendReminder: `${API_BASE_URL}/send_reminder_api.php`
+};
+
+// Global variables
+let currentBills = [];
+let allBills = [];
+let currentStats = {};
+let landlordId = '';
+let landlordName = '';
+
+// Initialize the page
+document.addEventListener('DOMContentLoaded', function() {
+    // Get landlord info from session/localStorage or make an API call
+    // For now, assuming these are available globally
+    landlordId = window.landlordId || '';
+    landlordName = window.landlordName || '';
+    
+    if (!landlordId) {
+        console.error('Landlord ID not found');
+        window.location.href = 'login.php';
+        return;
     }
     
-    function showDeleteModal(billId) {
-        document.getElementById('deleteBillId').value = billId;
-        document.getElementById('deleteModal').style.display = 'block';
-    }
+    // Get filter from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const filter = urlParams.get('filter') || 'all';
     
-    function showRemindModal(billId) {
-        document.getElementById('remindBillId').value = billId;
-        document.getElementById('remindModal').style.display = 'block';
-    }
+    // Load bills data
+    loadBills(filter);
     
-    function closeModal(modalId) {
-        document.getElementById(modalId).style.display = 'none';
-    }
+    // Set up event listeners
+    setupEventListeners();
+});
+
+// Setup event listeners
+function setupEventListeners() {
+    // Filter buttons
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const filter = this.getAttribute('href').split('filter=')[1];
+            updateFilter(filter);
+        });
+    });
     
-    // Close modal when clicking outside of it
+    // Modal close events
     window.onclick = function(event) {
         const deleteModal = document.getElementById('deleteModal');
         const remindModal = document.getElementById('remindModal');
@@ -354,6 +307,311 @@ if ($data['success']) {
             remindModal.style.display = 'none';
         }
     }
+}
+
+// Load bills from API
+async function loadBills(filter = 'all') {
+    try {
+        showLoading(true);
+        
+        const response = await fetch(`${API_ENDPOINTS.getBills}?landlord_id=${encodeURIComponent(landlordId)}&filter=${encodeURIComponent(filter)}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            currentBills = result.data.bills;
+            allBills = result.data.all_bills;
+            currentStats = result.data.statistics;
+            
+            updateDashboard();
+            updateBillsTable();
+            updateFilterButtons();
+            
+            // Update URL without reloading page
+            const newUrl = new URL(window.location);
+            newUrl.searchParams.set('filter', filter);
+            window.history.replaceState({}, '', newUrl);
+            
+        } else {
+            showError(result.message || 'Failed to load bills');
+        }
+    } catch (error) {
+        console.error('Error loading bills:', error);
+        showError('Failed to connect to server. Please try again.');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Update dashboard cards
+function updateDashboard() {
+    // Update title
+    const titleElement = document.querySelector('.title');
+    if (titleElement) {
+        titleElement.textContent = `Bills Dashboard for ${landlordName} 👋`;
+    }
+    
+    // Update dashboard cards
+    updateCard('.card-total .card-value', currentStats.total_bills || 0);
+    updateCard('.card-total .card-money', `₦${formatMoney(currentStats.total_amount || 0)}`);
+    
+    updateCard('.card-paid .card-value', currentStats.paid_bills || 0);
+    updateCard('.card-paid .card-money', `₦${formatMoney(currentStats.paid_amount || 0)}`);
+    
+    updateCard('.card-overdue .card-value', currentStats.overdue_bills || 0);
+    updateCard('.card-upcoming .card-value', currentStats.upcoming_bills || 0);
+}
+
+// Update a specific card
+function updateCard(selector, value) {
+    const element = document.querySelector(selector);
+    if (element) {
+        element.textContent = value;
+    }
+}
+
+// Update bills table
+function updateBillsTable() {
+    const tbody = document.querySelector('.bills-table tbody');
+    if (!tbody) return;
+    
+    if (currentBills.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px;">No bills found for the selected filter.</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = currentBills.map(bill => `
+        <tr>
+            <td>${escapeHtml(bill.class_name || 'N/A')}</td>
+            <td>${escapeHtml(bill.bill_name)}</td>
+            <td>${escapeHtml(bill.tenant_name || 'No tenant assigned')}</td>
+            <td>₦${formatMoney(bill.amount)}</td>
+            <td><span class="due-date ${bill.due_class}">${escapeHtml(bill.due_text)}</span></td>
+            <td>
+                <span class="status-badge ${bill.status == 1 ? 'status-paid' : 'status-not-paid'}">
+                    ${bill.status == 1 ? 'Paid' : 'Not Paid'}
+                </span>
+            </td>
+            <td>
+                <a href="view_bill.php?id=${bill.id}" title="View" class="action-btn">
+                    <i class="fas fa-eye"></i>
+                </a>
+                <a href="edit_bill.php?id=${bill.id}" title="Edit" class="action-btn">
+                    <i class="fas fa-edit"></i>
+                </a>
+                ${bill.status == 0 ? `
+                    <button onclick="showRemindModal(${bill.id})" title="Remind" class="action-btn btn-remind">
+                        <i class="fas fa-bell"></i>
+                    </button>
+                ` : ''}
+                <button onclick="showDeleteModal(${bill.id})" title="Delete" class="action-btn btn-delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Update filter buttons
+function updateFilterButtons() {
+    const filters = {
+        all: currentStats.total_bills || 0,
+        paid: currentStats.paid_bills || 0,
+        unpaid: currentStats.unpaid_bills || 0,
+        overdue: currentStats.overdue_bills || 0,
+        upcoming: currentStats.upcoming_bills || 0
+    };
+    
+    Object.keys(filters).forEach(filterKey => {
+        const badge = document.querySelector(`a[href*="filter=${filterKey}"] .filter-badge`);
+        if (badge) {
+            badge.textContent = filters[filterKey];
+        }
+    });
+}
+
+// Update filter and reload data
+async function updateFilter(filter) {
+    // Update active filter button
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`a[href*="filter=${filter}"]`)?.classList.add('active');
+    
+    // Reload bills with new filter
+    await loadBills(filter);
+}
+
+// Delete bill
+async function deleteBill(billId) {
+    try {
+        showLoading(true);
+        
+        const response = await fetch(API_ENDPOINTS.deleteBill, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                bill_id: billId,
+                landlord_id: landlordId
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess(result.message);
+            // Reload bills to update the display
+            const currentFilter = new URLSearchParams(window.location.search).get('filter') || 'all';
+            await loadBills(currentFilter);
+        } else {
+            showError(result.message || 'Failed to delete bill');
+        }
+    } catch (error) {
+        console.error('Error deleting bill:', error);
+        showError('Failed to connect to server. Please try again.');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Send reminder
+async function sendReminder(billId) {
+    try {
+        showLoading(true);
+        
+        const response = await fetch(API_ENDPOINTS.sendReminder, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                bill_id: billId,
+                landlord_id: landlordId
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess(result.message);
+        } else {
+            showError(result.message || 'Failed to send reminder');
+        }
+    } catch (error) {
+        console.error('Error sending reminder:', error);
+        showError('Failed to connect to server. Please try again.');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Modal functions
+function showDeleteModal(billId) {
+    document.getElementById('deleteBillId').value = billId;
+    document.getElementById('deleteModal').style.display = 'block';
+}
+
+function showRemindModal(billId) {
+    document.getElementById('remindBillId').value = billId;
+    document.getElementById('remindModal').style.display = 'block';
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+}
+
+// Handle modal form submissions
+function handleDeleteConfirm() {
+    const billId = document.getElementById('deleteBillId').value;
+    if (billId) {
+        deleteBill(parseInt(billId));
+        closeModal('deleteModal');
+    }
+}
+
+function handleRemindConfirm() {
+    const billId = document.getElementById('remindBillId').value;
+    if (billId) {
+        sendReminder(parseInt(billId));
+        closeModal('remindModal');
+    }
+}
+
+// Utility functions
+function formatMoney(amount) {
+    return parseFloat(amount || 0).toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function showLoading(show) {
+    // You can implement a loading indicator here
+    // For example, disable buttons, show spinner, etc.
+    const buttons = document.querySelectorAll('button, .action-btn');
+    buttons.forEach(btn => {
+        btn.disabled = show;
+    });
+}
+
+function showSuccess(message) {
+    // Remove existing alerts
+    removeExistingAlerts();
+    
+    // Create success alert
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-success';
+    alert.textContent = message;
+    
+    // Insert after the title
+    const title = document.querySelector('.title');
+    title.parentNode.insertBefore(alert, title.nextSibling);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        alert.remove();
+    }, 5000);
+}
+
+function showError(message) {
+    // Remove existing alerts
+    removeExistingAlerts();
+    
+    // Create error alert
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-danger';
+    alert.textContent = message;
+    
+    // Insert after the title
+    const title = document.querySelector('.title');
+    title.parentNode.insertBefore(alert, title.nextSibling);
+    
+    // Auto-remove after 8 seconds
+    setTimeout(() => {
+        alert.remove();
+    }, 8000);
+}
+
+function removeExistingAlerts() {
+    document.querySelectorAll('.alert').forEach(alert => alert.remove());
+}
+
+// Navigation functions (existing)
+function toggleMenu() {
+    document.getElementById('main-nav').classList.toggle('active');
+}
 </script>
 </body>
 </html>
