@@ -113,12 +113,15 @@ class BillAPI {
     }
 
     async getClassesAndBills() {
+        // Send landlord_id in the request since sessions don't work cross-origin
         const response = await fetch(`${this.baseUrl}/landlord_classes_api.php`, {
-            method: 'GET',
+            method: 'POST', // Back to POST since we need to send data
             headers: {
                 'Content-Type': 'application/json'
             },
-            credentials: 'include'  // ← Add this to include cookies/session
+            body: JSON.stringify({
+                landlord_id: this.landlordId
+            })
         });
 
         const data = await response.json();
@@ -139,8 +142,7 @@ class BillAPI {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(billData),
-            credentials: 'include'  // ← Add this to include cookies/session
+            body: JSON.stringify(billData)
         });
 
         const data = await response.json();
