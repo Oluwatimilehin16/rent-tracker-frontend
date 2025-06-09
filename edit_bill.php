@@ -340,32 +340,30 @@ if (!$bill_id) {
     </div>
 
     <script>
-        const API_BASE_URL = 'https://rent-tracker-api.onrender.com';
-        const billId = <?php echo $bill_id; ?>;
-        const landlordId = <?php echo $landlord_id; ?>;
+       const API_BASE_URL = 'https://rent-tracker-api.onrender.com';
 
-        // Load bill data when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            loadBillData();
-        });
+async function loadBillData(billId, landlordId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/?id=${billId}&landlord_id=${landlordId}`, {
+      method: 'GET',
+      credentials: 'include',  // Important: send cookies with cross-origin request
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
 
-        async function loadBillData() {
-            try {
-                const response = await fetch(`${API_BASE_URL}?id=${billId}&landlord_id=${landlordId}`);
-                const result = await response.json();
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
 
-                if (result.success) {
-                    populateForm(result.data);
-                    document.getElementById('loading').style.display = 'none';
-                    document.getElementById('edit-bill-form').style.display = 'block';
-                } else {
-                    showAlert('error', result.message || 'Failed to load bill data');
-                }
-            } catch (error) {
-                console.error('Error loading bill data:', error);
-                showAlert('error', 'Failed to load bill data. Please try again.');
-            }
-        }
+    const data = await response.json();
+    console.log('Bill data loaded:', data);
+    // Process your data here...
+
+  } catch (error) {
+    console.error('Error loading bill data:', error);
+  }
+}
 
         function populateForm(data) {
             const { bill, tenants } = data;
