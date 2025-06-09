@@ -9,10 +9,8 @@ if (!isset($_SESSION['landlord_id'])) {
 $landlord_id = $_SESSION['landlord_id'];
 $bill_id = (int)$_GET['id'];
 
-if (!$bill_id) {
-    header("Location: view_bills.php");
-    exit();
-}
+// API base URL - update this to your Render API URL
+$api_base_url = 'https://rent-tracker-api.onrender.com';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -149,6 +147,11 @@ if (!$bill_id) {
             outline: none;
         }
 
+        .form-container textarea {
+            resize: vertical;
+            height: 100px;
+        }
+
         .checkbox-wrapper {
             display: flex;
             align-items: center;
@@ -201,13 +204,8 @@ if (!$bill_id) {
 
         .loading {
             text-align: center;
-            padding: 20px;
             color: #666;
-        }
-
-        .payment-date-container {
-            display: none;
-            margin-top: 10px;
+            padding: 20px;
         }
 
         /* Mobile Styles */
@@ -270,7 +268,26 @@ if (!$bill_id) {
             .form-container input,
             .form-container select,
             .form-container textarea {
-                font-size: 16px;
+                font-size: 16px; /* Prevents zoom on iOS */
+            }
+        }
+
+        @media (max-width: 480px) {
+            header {
+                padding: 10px 15px;
+            }
+
+            .content-wrapper {
+                padding: 10px;
+            }
+
+            .form-container {
+                padding: 15px;
+                margin: 0 5px;
+            }
+
+            .title {
+                font-size: 18px;
             }
         }
     </style>
@@ -300,14 +317,14 @@ if (!$bill_id) {
     <div class="content-wrapper">
         <h1 class="title" id="page-title">Edit Bill</h1>
         
-        <div id="alert-container"></div>
+        <div id="message-container"></div>
+        
+        <div id="loading" class="loading">
+            <i class="fas fa-spinner fa-spin"></i> Loading bill details...
+        </div>
 
-        <div class="form-container">
-            <div id="loading" class="loading">
-                <i class="fas fa-spinner fa-spin"></i> Loading bill data...
-            </div>
-
-            <form id="edit-bill-form" style="display: none;">
+        <div class="form-container" id="form-container" style="display: none;">
+            <form id="edit-bill-form">
                 <label for="bill_name">Bill Name</label>
                 <input type="text" id="bill_name" name="bill_name" required>
 
@@ -317,19 +334,14 @@ if (!$bill_id) {
                 <label for="due_date">Due Date</label>
                 <input type="date" id="due_date" name="due_date" required>
 
-                <label for="users_id">Assign to Tenant</label>
-                <select id="users_id" name="users_id" required>
+                <label for="user_id">Assign to Tenant</label>
+                <select id="user_id" name="users_id" required>
                     <option value="">Select a tenant</option>
                 </select>
 
                 <div class="checkbox-wrapper">
-                    <input type="checkbox" id="status" name="status" value="paid" onchange="togglePaymentDate()">
+                    <input type="checkbox" id="status" name="status" value="paid">
                     <label for="status">Mark as Paid</label>
-                </div>
-
-                <div id="payment-date-container" class="payment-date-container">
-                    <label for="payment_date">Payment Date</label>
-                    <input type="date" id="payment_date" name="payment_date">
                 </div>
 
                 <button type="submit" class="btn-primary" id="submit-btn">
@@ -340,74 +352,84 @@ if (!$bill_id) {
     </div>
 
     <script>
-       const API_BASE_URL = 'https://rent-tracker-api.onrender.com';
+        const API_BASE_URL = '<?php echo $api_base_url; ?>';
+        const LANDLORD_ID = <?php echo $landlord_id; ?>;
+        const BILL_ID = <?php echo $bill_id; ?>;
 
-async function loadBillData(billId, landlordId) {
-  try {
-    const response = await fetch(`${API_BASE_URL}/?id=${billId}&landlord_id=${landlordId}`, {
-      method: 'GET',
-      credentials: 'include',  // Important: send cookies with cross-origin request
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log('Bill data loaded:', data);
-    // Process your data here...
-
-  } catch (error) {
-    console.error('Error loading bill data:', error);
-  }
-}
-
-        function populateForm(data) {
-            const { bill, tenants } = data;
+        // Show message function
+        function showMessage(message, type = 'success') {
+            const messageContainer = document.getElementById('message-container');
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+            messageContainer.innerHTML = `<div class="alert ${alertClass}">${message}</div>`;
             
-            // Update page title
-            document.getElementById('page-title').textContent = `Edit Bill for: ${bill.tenant_firstname || 'Tenant'}`;
-            
-            // Populate form fields
+            // Auto-hide success messages after 3 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    messageContainer.innerHTML = '';
+                }, 3000);
+            }
+        }
+
+        // Fetch bill details and tenants on page load
+        async function loadPageData() {
+            try {
+                // Fetch bill details and tenants in parallel
+                const [billResponse, tenantsResponse] = await Promise.all([
+                    fetch(`${API_BASE_URL}/get_bill_details.php?bill_id=${BILL_ID}&landlord_id=${LANDLORD_ID}`),
+                    fetch(`${API_BASE_URL}/get_landlord_tenants.php?landlord_id=${LANDLORD_ID}`)
+                ]);
+
+                if (!billResponse.ok || !tenantsResponse.ok) {
+                    throw new Error('Failed to fetch data');
+                }
+
+                const billData = await billResponse.json();
+                const tenantsData = await tenantsResponse.json();
+
+                if (!billData.success || !tenantsData.success) {
+                    throw new Error(billData.message || tenantsData.message || 'Failed to load data');
+                }
+
+                // Populate form with bill data
+                populateForm(billData.data);
+                
+                // Populate tenants dropdown
+                populateTenants(tenantsData.data, billData.data.users_id);
+
+                // Update page title
+                document.getElementById('page-title').textContent = 
+                    `Edit Bill for: ${billData.data.tenant_firstname || 'Tenant'}`;
+
+                // Hide loading, show form
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('form-container').style.display = 'block';
+
+            } catch (error) {
+                console.error('Error loading page data:', error);
+                showMessage('Failed to load bill details: ' + error.message, 'error');
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        // Populate form with bill data
+        function populateForm(bill) {
             document.getElementById('bill_name').value = bill.bill_name || '';
             document.getElementById('amount').value = bill.amount || '';
             document.getElementById('due_date').value = bill.due_date || '';
             document.getElementById('status').checked = bill.status === 'paid';
-            document.getElementById('payment_date').value = bill.payment_date || '';
-            
-            // Populate tenants dropdown
-            const tenantsSelect = document.getElementById('users_id');
-            tenantsSelect.innerHTML = '<option value="">Select a tenant</option>';
+        }
+
+        // Populate tenants dropdown
+        function populateTenants(tenants, selectedTenantId) {
+            const select = document.getElementById('user_id');
             
             tenants.forEach(tenant => {
                 const option = document.createElement('option');
                 option.value = tenant.id;
                 option.textContent = tenant.firstname;
-                option.selected = tenant.id == bill.users_id;
-                tenantsSelect.appendChild(option);
+                option.selected = tenant.id == selectedTenantId;
+                select.appendChild(option);
             });
-
-            // Show/hide payment date based on status
-            togglePaymentDate();
-        }
-
-        function togglePaymentDate() {
-            const statusCheckbox = document.getElementById('status');
-            const paymentDateContainer = document.getElementById('payment-date-container');
-            const paymentDateInput = document.getElementById('payment_date');
-            
-            if (statusCheckbox.checked) {
-                paymentDateContainer.style.display = 'block';
-                if (!paymentDateInput.value) {
-                    paymentDateInput.value = new Date().toISOString().split('T')[0];
-                }
-            } else {
-                paymentDateContainer.style.display = 'none';
-                paymentDateInput.value = '';
-            }
         }
 
         // Handle form submission
@@ -420,20 +442,21 @@ async function loadBillData(billId, landlordId) {
             // Disable button and show loading
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
-            
+
             try {
                 const formData = new FormData(this);
                 const data = {
+                    bill_id: BILL_ID,
+                    landlord_id: LANDLORD_ID,
                     bill_name: formData.get('bill_name'),
                     amount: parseFloat(formData.get('amount')),
                     due_date: formData.get('due_date'),
                     users_id: parseInt(formData.get('users_id')),
-                    status: formData.get('status') === 'paid',
-                    payment_date: formData.get('payment_date') || null
+                    status: formData.get('status') === 'paid' ? 'paid' : 'unpaid'
                 };
 
-                const response = await fetch(`${API_BASE_URL}?id=${billId}`, {
-                    method: 'POST',
+                const response = await fetch(`${API_BASE_URL}/update_bill.php`, {
+                    method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                     },
@@ -443,17 +466,16 @@ async function loadBillData(billId, landlordId) {
                 const result = await response.json();
 
                 if (result.success) {
-                    showAlert('success', result.message || 'Bill updated successfully!');
-                    // Optionally redirect after success
-                    setTimeout(() => {
-                        window.location.href = 'view_bills.php';
-                    }, 2000);
+                    showMessage('✅ ' + result.message, 'success');
+                    // Optionally redirect after successful update
+                    // setTimeout(() => window.location.href = 'view_bills.php', 2000);
                 } else {
-                    showAlert('error', result.message || 'Failed to update bill');
+                    showMessage('❌ ' + result.message, 'error');
                 }
+
             } catch (error) {
                 console.error('Error updating bill:', error);
-                showAlert('error', 'Failed to update bill. Please try again.');
+                showMessage('❌ Failed to update bill. Please try again.', 'error');
             } finally {
                 // Re-enable button
                 submitBtn.disabled = false;
@@ -461,24 +483,7 @@ async function loadBillData(billId, landlordId) {
             }
         });
 
-        function showAlert(type, message) {
-            const alertContainer = document.getElementById('alert-container');
-            const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
-            
-            alertContainer.innerHTML = `
-                <div class="alert ${alertClass}">
-                    ${message}
-                </div>
-            `;
-            
-            // Auto-hide success messages after 5 seconds
-            if (type === 'success') {
-                setTimeout(() => {
-                    alertContainer.innerHTML = '';
-                }, 5000);
-            }
-        }
-
+        // Navigation functions
         function toggleMenu() {
             const nav = document.getElementById('main-nav');
             nav.classList.toggle('active');
@@ -500,6 +505,9 @@ async function loadBillData(billId, landlordId) {
                 document.getElementById('main-nav').classList.remove('active');
             }
         });
+
+        // Load page data when DOM is ready
+        document.addEventListener('DOMContentLoaded', loadPageData);
     </script>
 </body>
 </html>
