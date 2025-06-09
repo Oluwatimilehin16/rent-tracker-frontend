@@ -373,18 +373,35 @@ $api_base_url = 'https://rent-tracker-api.onrender.com';
         // Fetch bill details and tenants on page load
         async function loadPageData() {
             try {
+                console.log('Fetching data from:', API_BASE_URL);
+                
                 // Fetch bill details and tenants in parallel
                 const [billResponse, tenantsResponse] = await Promise.all([
                     fetch(`${API_BASE_URL}/get_bill_details.php?bill_id=${BILL_ID}&landlord_id=${LANDLORD_ID}`),
                     fetch(`${API_BASE_URL}/get_landlord_tenants.php?landlord_id=${LANDLORD_ID}`)
                 ]);
 
+                console.log('Bill response status:', billResponse.status);
+                console.log('Tenants response status:', tenantsResponse.status);
+
                 if (!billResponse.ok || !tenantsResponse.ok) {
-                    throw new Error('Failed to fetch data');
+                    throw new Error(`HTTP Error - Bill: ${billResponse.status}, Tenants: ${tenantsResponse.status}`);
                 }
 
-                const billData = await billResponse.json();
-                const tenantsData = await tenantsResponse.json();
+                // Get response text first to check if it's valid JSON
+                const billText = await billResponse.text();
+                const tenantsText = await tenantsResponse.text();
+                
+                console.log('Bill response:', billText.substring(0, 200));
+                console.log('Tenants response:', tenantsText.substring(0, 200));
+
+                let billData, tenantsData;
+                try {
+                    billData = JSON.parse(billText);
+                    tenantsData = JSON.parse(tenantsText);
+                } catch (jsonError) {
+                    throw new Error('Invalid JSON response from API. Check API endpoints and PHP errors.');
+                }
 
                 if (!billData.success || !tenantsData.success) {
                     throw new Error(billData.message || tenantsData.message || 'Failed to load data');
