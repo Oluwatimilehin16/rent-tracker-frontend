@@ -8,7 +8,11 @@ if (!isset($_SESSION['landlord_id'])) {
     exit();
 }
 
+$landlord_id = $_SESSION['landlord_id'];
 $landlord_name = $_SESSION['landlord_name'];
+
+// Suggested bill names
+$suggested_bills = ['Rent', 'Water', 'Electricity', 'Gas', 'Internet', 'Maintenance'];
 ?>
 
 <!DOCTYPE html>
@@ -19,6 +23,33 @@ $landlord_name = $_SESSION['landlord_name'];
     <title>Add Bill - Rent & Utility Tracker</title>
     <link rel="stylesheet" href="add_bill.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .error-message {
+            color: #d32f2f;
+            background-color: #ffebee;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: none;
+        }
+        .success-message {
+            color: #2e7d32;
+            background-color: #e8f5e8;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: none;
+        }
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+    </style>
 </head>
 <body>
 
@@ -46,15 +77,12 @@ $landlord_name = $_SESSION['landlord_name'];
         <h2><i class="fas fa-file-invoice-dollar"></i> Add New Bill, Landlord <?php echo $landlord_name; ?> 👋</h2>
         <p class="explanatory-text">Fill in the bill details and assign it to one of your group.</p>
 
-        <!-- Loading indicator -->
-        <div id="loading" style="display: none; text-align: center; margin: 20px 0;">
-            <i class="fas fa-spinner fa-spin"></i> Loading...
+        <div id="loading" class="loading">
+            <i class="fas fa-spinner fa-spin"></i> Loading classes...
         </div>
 
-        <!-- Error/Success messages -->
-        <div id="message-container" style="display: none; margin: 20px 0; padding: 15px; border-radius: 5px;">
-            <span id="message-text"></span>
-        </div>
+        <div id="error-message" class="error-message"></div>
+        <div id="success-message" class="success-message"></div>
 
         <form id="add-bill-form" class="add-bill-form">
             <div class="form-group">
@@ -68,6 +96,10 @@ $landlord_name = $_SESSION['landlord_name'];
                 <label for="bill_name"><i class="fas fa-file-signature"></i> Bill Name</label>
                 <select name="bill_name" id="bill_name" required>
                     <option value="">Select Bill Type</option>
+                    <?php foreach ($suggested_bills as $bill) : ?>
+                        <option value="<?= $bill ?>"><?= $bill ?></option>
+                    <?php endforeach; ?>
+                    <option value="other">Other (Specify Below)</option>
                 </select>
             </div>
 
@@ -78,7 +110,7 @@ $landlord_name = $_SESSION['landlord_name'];
 
             <div class="form-group">
                 <label for="amount"><i class="fas fa-coins"></i> Amount (₦)</label>
-                <input type="number" name="amount" id="amount" placeholder="Enter amount" required step="0.01" min="0">
+                <input type="number" name="amount" id="amount" placeholder="Enter amount" required min="1" step="0.01">
             </div>
 
             <div class="form-group">
@@ -101,275 +133,149 @@ $landlord_name = $_SESSION['landlord_name'];
 </footer>
 
 <script>
-// Configuration - Update this with your API base URL
 const API_BASE_URL = 'https://rent-tracker-api.onrender.com';
+const landlordId = <?php echo json_encode($landlord_id); ?>;
 
-// API helper class
-// Updated JavaScript in add_bill.php
-class BillAPI {
-    constructor(baseUrl) {
-        this.baseUrl = baseUrl;
-        // Get landlord ID from PHP session
-        this.landlordId = '<?php echo $_SESSION['landlord_id'] ?? ''; ?>';
+// Show/hide messages
+function showMessage(message, type = 'error') {
+    const errorDiv = document.getElementById('error-message');
+    const successDiv = document.getElementById('success-message');
+    
+    if (type === 'error') {
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+        successDiv.style.display = 'none';
+    } else {
+        successDiv.textContent = message;
+        successDiv.style.display = 'block';
+        errorDiv.style.display = 'none';
     }
+}
 
-    async getClassesAndBills() {
-        // Ensure this is a POST request to match your API
-        const response = await fetch(`${this.baseUrl}/landlord_classes_api.php`, {
-            method: 'POST', // Make sure this is POST
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                landlord_id: this.landlordId
-            })
-        });
+function hideMessages() {
+    document.getElementById('error-message').style.display = 'none';
+    document.getElementById('success-message').style.display = 'none';
+}
 
+// Load classes from API
+async function loadClasses() {
+    const loading = document.getElementById('loading');
+    const classSelect = document.getElementById('class_id');
+    
+    loading.style.display = 'block';
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/get_classes_api.php?landlord_id=${landlordId}`);
         const data = await response.json();
         
-        if (!response.ok) {
-            throw new Error(data.message || 'Failed to fetch classes');
+        if (data.success) {
+            classSelect.innerHTML = '<option value="">-- Choose Group (Tenant) --</option>';
+            
+            data.classes.forEach(cls => {
+                const option = document.createElement('option');
+                option.value = cls.id;
+                option.textContent = `${cls.class_name} (${cls.class_code})`;
+                classSelect.appendChild(option);
+            });
+            
+            if (data.classes.length === 0) {
+                classSelect.innerHTML = '<option value="">-- No classes found --</option>';
+                showMessage('No tenant groups found. Please create a group first.', 'error');
+            }
+        } else {
+            showMessage(data.message || 'Failed to load classes', 'error');
+            classSelect.innerHTML = '<option value="">-- Failed to load classes --</option>';
         }
-
-        return data;
+    } catch (error) {
+        console.error('Error loading classes:', error);
+        showMessage('Network error while loading classes. Please check your connection.', 'error');
+        classSelect.innerHTML = '<option value="">-- Error loading classes --</option>';
+    } finally {
+        loading.style.display = 'none';
     }
+}
 
-    async addBill(billData) {
-        // Add landlord_id to bill data
-        billData.landlord_id = this.landlordId;
-
-        const response = await fetch(`${this.baseUrl}/add_bill_api.php`, {
+// Handle form submission
+document.getElementById('add-bill-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    hideMessages();
+    
+    const submitBtn = document.getElementById('submit-btn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding Bill...';
+    
+    const formData = new FormData(this);
+    
+    // Handle custom bill name
+    let billName = formData.get('bill_name');
+    if (billName === 'other') {
+        billName = formData.get('other_bill_name');
+        if (!billName || billName.trim() === '') {
+            showMessage('Please specify the custom bill name.', 'error');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-plus"></i> Add Bill';
+            return;
+        }
+    }
+    
+    const billData = {
+        bill_name: billName,
+        amount: formData.get('amount'),
+        due_date: formData.get('due_date'),
+        class_id: formData.get('class_id'),
+        landlord_id: landlordId
+    };
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/add_bill_api.php`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
             },
             body: JSON.stringify(billData)
         });
-
+        
         const data = await response.json();
         
-        if (!response.ok) {
-            throw new Error(data.message || 'Failed to add bill');
+        if (data.success) {
+            showMessage(data.message || 'Bill added successfully!', 'success');
+            this.reset(); // Clear form
+            document.getElementById('other_bill_name_group').style.display = 'none';
+        } else {
+            showMessage(data.message || 'Failed to add bill', 'error');
         }
-
-        return data;
-    }
-}
-// Initialize API
-const billAPI = new BillAPI(API_BASE_URL);
-
-// DOM elements
-const loadingEl = document.getElementById('loading');
-const messageContainer = document.getElementById('message-container');
-const messageText = document.getElementById('message-text');
-const classSelect = document.getElementById('class_id');
-const billNameSelect = document.getElementById('bill_name');
-const otherBillNameGroup = document.getElementById('other_bill_name_group');
-const otherBillNameInput = document.getElementById('other_bill_name');
-const form = document.getElementById('add-bill-form');
-const submitBtn = document.getElementById('submit-btn');
-
-// Utility functions
-function showLoading(show = true) {
-    loadingEl.style.display = show ? 'block' : 'none';
-}
-
-function showMessage(message, isError = false) {
-    messageContainer.style.display = 'block';
-    messageContainer.className = isError ? 'error-message' : 'success-message';
-    messageContainer.style.backgroundColor = isError ? '#ffebee' : '#e8f5e8';
-    messageContainer.style.color = isError ? '#c62828' : '#2e7d32';
-    messageContainer.style.border = isError ? '1px solid #ef5350' : '1px solid #66bb6a';
-    messageText.textContent = message;
-    
-    // Auto-hide success messages after 5 seconds
-    if (!isError) {
-        setTimeout(() => {
-            messageContainer.style.display = 'none';
-        }, 5000);
-    }
-}
-
-function hideMessage() {
-    messageContainer.style.display = 'none';
-}
-
-function populateClassDropdown(classes) {
-    classSelect.innerHTML = '<option value="">-- Choose Group (Tenant) --</option>';
-    
-    classes.forEach(cls => {
-        const option = document.createElement('option');
-        option.value = cls.id;
-        option.textContent = `${cls.class_name} (${cls.class_code}) - ${cls.tenant_count} tenant${cls.tenant_count !== 1 ? 's' : ''}`;
-        classSelect.appendChild(option);
-    });
-}
-
-function populateBillTypeDropdown(suggestedBills) {
-    billNameSelect.innerHTML = '<option value="">Select Bill Type</option>';
-    
-    suggestedBills.forEach(bill => {
-        const option = document.createElement('option');
-        option.value = bill;
-        option.textContent = bill;
-        billNameSelect.appendChild(option);
-    });
-    
-    // Add "Other" option
-    const otherOption = document.createElement('option');
-    otherOption.value = 'other';
-    otherOption.textContent = 'Other (Specify Below)';
-    billNameSelect.appendChild(otherOption);
-}
-
-function setSubmitButtonState(loading = false) {
-    if (loading) {
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding Bill...';
-    } else {
+    } catch (error) {
+        console.error('Error adding bill:', error);
+        showMessage('Network error. Please check your connection and try again.', 'error');
+    } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="fas fa-plus"></i> Add Bill';
     }
-}
-
-// Load initial data
-async function loadInitialData() {
-    showLoading(true);
-    hideMessage();
-    
-    try {
-        const data = await billAPI.getClassesAndBills();
-        populateClassDropdown(data.data.classes);
-        populateBillTypeDropdown(data.data.suggested_bills);
-        
-        if (data.data.classes.length === 0) {
-            showMessage('No tenant groups found. Please create a group first before adding bills.', true);
-        }
-        
-    } catch (error) {
-        console.error('Error loading initial data:', error);
-        showMessage('Error loading data: ' + error.message, true);
-    } finally {
-        showLoading(false);
-    }
-}
-
-// Form submission handler
-form.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    hideMessage();
-    setSubmitButtonState(true);
-    
-    try {
-        const formData = new FormData(this);
-        const billData = {
-            bill_name: formData.get('bill_name'),
-            amount: formData.get('amount'),
-            due_date: formData.get('due_date'),
-            class_id: formData.get('class_id')
-        };
-
-        // Handle "other" bill name
-        if (billData.bill_name === 'other') {
-            const otherBillName = formData.get('other_bill_name');
-            if (!otherBillName || !otherBillName.trim()) {
-                throw new Error('Please specify the custom bill name.');
-            }
-            billData.other_bill_name = otherBillName.trim();
-        }
-
-        // Validate amount
-        if (!billData.amount || parseFloat(billData.amount) <= 0) {
-            throw new Error('Please enter a valid amount greater than 0.');
-        }
-
-        // Validate due date
-        const dueDate = new Date(billData.due_date);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        if (dueDate < today) {
-            const confirm = window.confirm('The due date is in the past. Do you want to continue?');
-            if (!confirm) {
-                return;
-            }
-        }
-
-        const result = await billAPI.addBill(billData);
-        
-        showMessage(`Bill "${result.data.bill_name}" added successfully for ${result.data.class_name}!`, false);
-        
-        // Reset form
-        this.reset();
-        otherBillNameGroup.style.display = 'none';
-        
-    } catch (error) {
-        console.error('Error adding bill:', error);
-        showMessage('Error adding bill: ' + error.message, true);
-    } finally {
-        setSubmitButtonState(false);
-    }
 });
 
-// Bill name change handler
-billNameSelect.addEventListener('change', function() {
-    const isOther = this.value === 'other';
-    otherBillNameGroup.style.display = isOther ? 'block' : 'none';
-    
-    if (isOther) {
-        otherBillNameInput.required = true;
-        otherBillNameInput.focus();
-    } else {
-        otherBillNameInput.required = false;
-        otherBillNameInput.value = '';
-    }
-});
-
-// Hamburger menu toggle
+// Toggle hamburger menu
 function toggleMenu() {
     document.getElementById('main-nav').classList.toggle('active');
 }
 
-// Initialize page
-document.addEventListener('DOMContentLoaded', function() {
-    loadInitialData();
+// Toggle visibility of 'Other' input
+document.getElementById('bill_name').addEventListener('change', function () {
+    const otherGroup = document.getElementById('other_bill_name_group');
+    const otherInput = document.getElementById('other_bill_name');
+    
+    if (this.value === 'other') {
+        otherGroup.style.display = 'block';
+        otherInput.required = true;
+    } else {
+        otherGroup.style.display = 'none';
+        otherInput.required = false;
+        otherInput.value = '';
+    }
 });
 
-// Set minimum date to today
-document.getElementById('due_date').min = new Date().toISOString().split('T')[0];
+// Load classes when page loads
+document.addEventListener('DOMContentLoaded', loadClasses);
 </script>
-
-<style>
-/* Additional styles for messages */
-.error-message, .success-message {
-    border-radius: 5px;
-    padding: 15px;
-    margin: 20px 0;
-    font-weight: 500;
-}
-
-.error-message {
-    background-color: #ffebee;
-    color: #c62828;
-    border: 1px solid #ef5350;
-}
-
-.success-message {
-    background-color: #e8f5e8;
-    color: #2e7d32;
-    border: 1px solid #66bb6a;
-}
-
-#submit-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-#loading {
-    font-size: 16px;
-    color: #666;
-}
-</style>
 
 </body>
 </html>
