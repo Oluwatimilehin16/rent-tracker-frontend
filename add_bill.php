@@ -105,6 +105,7 @@ $landlord_name = $_SESSION['landlord_name'];
 const API_BASE_URL = 'https://rent-tracker-api.onrender.com';
 
 // API helper class
+// Updated JavaScript in add_bill.php
 class BillAPI {
     constructor(baseUrl) {
         this.baseUrl = baseUrl;
@@ -113,9 +114,9 @@ class BillAPI {
     }
 
     async getClassesAndBills() {
-        // Send landlord_id in the request since sessions don't work cross-origin
+        // Ensure this is a POST request to match your API
         const response = await fetch(`${this.baseUrl}/landlord_classes_api.php`, {
-            method: 'POST', // Back to POST since we need to send data
+            method: 'POST', // Make sure this is POST
             headers: {
                 'Content-Type': 'application/json'
             },
