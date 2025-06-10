@@ -1,42 +1,4 @@
-// Utility functions
-        function showAlert(message, type = 'success') {
-            alertContainer.innerHTML = `
-                <div class="alert alert-${type}">
-                    ${message}
-                </div>
-            `;
-            
-            // Auto-hide success messages after 5 seconds
-            if (type === 'success') {
-                setTimeout(() => {
-                    alertContainer.innerHTML = '';
-                }, 5000);
-            }
-        }
-
-        function showLoading(show = true) {
-            loadingContainer.style.display = show ? 'block' : 'none';
-            formContainer.style.display = show ? 'none' : 'block';
-        }
-
-        // Load bill data
-        async function loadBillData() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/edit_bill_api.php?bill_id=${BILL_ID}&landlord_id=${LANDLORD_ID}`);
-                const result = await response.json();
-
-                if (result.success) {
-                    populateForm(result.data);
-                    showLoading(false);
-                } else {
-                    throw new Error(result.message);
-                }
-            } catch (error) {
-                console.error('Error loading bill data:', error);
-                showAlert('Failed to load bill data: ' + error.message, 'danger');
-                showLoading(false);
-            }
-        }<?php
+<?php
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 if (!isset($_SESSION['landlord_id'])) {
@@ -53,7 +15,7 @@ if (!$bill_id) {
 }
 
 // Define your API base URL
-$api_base_url = 'https://your-render-app.onrender.com'; // Replace with your actual Render URL
+$api_base_url = 'https://rent-tracker-api.onrender.com'; // Replace with your actual Render URL
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -542,6 +504,45 @@ $api_base_url = 'https://your-render-app.onrender.com'; // Replace with your act
         document.addEventListener('DOMContentLoaded', function() {
             loadBillData();
         });
+        // Utility functions
+        function showAlert(message, type = 'success') {
+            alertContainer.innerHTML = `
+                <div class="alert alert-${type}">
+                    ${message}
+                </div>
+            `;
+            
+            // Auto-hide success messages after 5 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    alertContainer.innerHTML = '';
+                }, 5000);
+            }
+        }
+
+        function showLoading(show = true) {
+            loadingContainer.style.display = show ? 'block' : 'none';
+            formContainer.style.display = show ? 'none' : 'block';
+        }
+
+        // Load bill data
+        async function loadBillData() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/edit_bill_api.php?bill_id=${BILL_ID}&landlord_id=${LANDLORD_ID}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    populateForm(result.data);
+                    showLoading(false);
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                console.error('Error loading bill data:', error);
+                showAlert('Failed to load bill data: ' + error.message, 'danger');
+                showLoading(false);
+            }
+        }
     </script>
 </body>
 </html>
