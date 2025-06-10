@@ -13,8 +13,7 @@ $tenant_id = $_SESSION['tenant_id'];
 $tenant_email = $_SESSION['tenant_email'];
 $firstname = $_SESSION['users_name'];
 
-// API base URL - update this to your Render API URL
-$api_base_url = 'https://your-api-url.onrender.com'; // Replace with your actual API URL
+$api_base_url = 'https://rent-tracker-api.onrender.com'; 
 ?>
 
 <!DOCTYPE html>
