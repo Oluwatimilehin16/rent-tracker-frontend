@@ -1,5 +1,5 @@
 <?php
-// Simple session check for initial page load
+include 'config.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -8,7 +8,15 @@ if (!isset($_SESSION['tenant_id']) || $_SESSION['users_role'] !== 'tenant') {
     header("Location: login.php");
     exit();
 }
+
+$tenant_id = $_SESSION['tenant_id'];
+$tenant_email = $_SESSION['tenant_email'];
+$firstname = $_SESSION['users_name'];
+
+// API base URL - update this to your Render API URL
+$api_base_url = 'https://your-api-url.onrender.com'; // Replace with your actual API URL
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -17,6 +25,32 @@ if (!isset($_SESSION['tenant_id']) || $_SESSION['users_role'] !== 'tenant') {
     <title>Tenant Dashboard - RentTracker</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="dashboard.css" />
+    <style>
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0,0,0,.1);
+            border-radius: 50%;
+            border-top-color: #007bff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
 <header>
@@ -34,170 +68,161 @@ if (!isset($_SESSION['tenant_id']) || $_SESSION['users_role'] !== 'tenant') {
 </header>
 
 <div class="dashboard">
-    <!-- Loading State -->
-    <div id="loadingState" class="loading-container">
-        <div class="spinner"></div>
-        <p>Loading your dashboard...</p>
-    </div>
-
-    <!-- Error State -->
-    <div id="errorState" class="error-container" style="display: none;">
-        <div class="error-message">
-            <i class="fas fa-exclamation-triangle"></i>
-            <h3>Something went wrong</h3>
-            <p id="errorMessage">Unable to load dashboard data. Please try again.</p>
-            <button onclick="loadDashboard()" class="retry-btn">
-                <i class="fas fa-redo"></i> Try Again
-            </button>
+    <div class="welcome-section">
+        <div class="welcome">
+            <i class="fas fa-user-circle"></i>
+            Welcome back, <?php echo htmlspecialchars($firstname); ?>!
+        </div>
+        
+        <div class="stats-grid" id="statsGrid">
+            <div class="loading">
+                <div class="spinner"></div>
+                Loading dashboard statistics...
+            </div>
         </div>
     </div>
 
-    <!-- Main Dashboard Content -->
-    <div id="dashboardContent" style="display: none;">
-        <div class="welcome-section">
-            <div class="welcome">
-                <i class="fas fa-user-circle"></i>
-                Welcome back, <span id="tenantName">...</span>!
-            </div>
-            
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <h3>Total Bills</h3>
-                    <div class="amount" id="totalBills">₦0.00</div>
-                    <div class="description">All assigned bills</div>
-                </div>
-                
-                <div class="stat-card">
-                    <h3>Paid Amount</h3>
-                    <div class="amount" id="totalPaid">₦0.00</div>
-                    <div class="description">Successfully paid</div>
-                </div>
-                
-                <div class="stat-card balance">
-                    <h3>Outstanding Balance</h3>
-                    <div class="amount" id="balance">₦0.00</div>
-                    <div class="description">Amount pending</div>
-                </div>
-                
-                <div class="stat-card overdue">
-                    <h3>Overdue Bills</h3>
-                    <div class="amount" id="overdueBills">0</div>
-                    <div class="description">Require immediate attention</div>
-                </div>
-                
-                <div class="stat-card due-soon">
-                    <h3>Due Soon</h3>
-                    <div class="amount" id="dueSoonBills">0</div>
-                    <div class="description">Due within 7 days</div>
-                </div>
-                
-                <div class="stat-card">
-                    <h3>Total Unpaid</h3>
-                    <div class="amount" id="totalUnpaid">0</div>
-                    <div class="description">Pending payments</div>
-                </div>
+    <div class="bills-section">
+        <div class="section-header">
+            <h3 class="section-title">
+                <i class="fas fa-file-invoice-dollar"></i>
+                Your Bills & Payments
+            </h3>
+            <div class="filter-buttons">
+                <button class="filter-btn active" onclick="filterBills('all')">All Bills</button>
+                <button class="filter-btn" onclick="filterBills('unpaid')">Unpaid</button>
+                <button class="filter-btn" onclick="filterBills('overdue')">Overdue</button>
+                <button class="filter-btn" onclick="filterBills('due-soon')">Due Soon</button>
             </div>
         </div>
 
-        <div class="bills-section">
-            <div class="section-header">
-                <h3 class="section-title">
-                    <i class="fas fa-file-invoice-dollar"></i>
-                    Your Bills & Payments
-                </h3>
-                <div class="filter-buttons">
-                    <button class="filter-btn active" onclick="filterBills('all')">All Bills</button>
-                    <button class="filter-btn" onclick="filterBills('unpaid')">Unpaid</button>
-                    <button class="filter-btn" onclick="filterBills('overdue')">Overdue</button>
-                    <button class="filter-btn" onclick="filterBills('due-soon')">Due Soon</button>
-                </div>
-            </div>
-
-            <table class="bills-table" id="billsTable">
-                <thead>
-                    <tr>
-                        <th><i class="fas fa-bolt"></i> Utility</th>
-                        <th><i class="fas fa-naira-sign"></i> Amount</th>
-                        <th><i class="fas fa-calendar"></i> Due Date</th>
-                        <th><i class="fas fa-check-circle"></i> Status</th>
-                        <th><i class="fas fa-user-tie"></i> Landlord</th>
-                        <th><i class="fas fa-sticky-note"></i> Notes</th>
-                    </tr>
-                </thead>
-                <tbody id="billsTableBody">
-                    <!-- Bills will be populated by JavaScript -->
-                </tbody>
-            </table>
-        </div>
+        <table class="bills-table" id="billsTable">
+            <thead>
+                <tr>
+                    <th><i class="fas fa-bolt"></i> Utility</th>
+                    <th><i class="fas fa-naira-sign"></i> Amount</th>
+                    <th><i class="fas fa-calendar"></i> Due Date</th>
+                    <th><i class="fas fa-check-circle"></i> Status</th>
+                    <th><i class="fas fa-user-tie"></i> Landlord</th>
+                    <th><i class="fas fa-sticky-note"></i> Notes</th>
+                </tr>
+            </thead>
+            <tbody id="billsTableBody">
+                <tr>
+                    <td colspan="6" class="loading">
+                        <div class="spinner"></div>
+                        Loading bills...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 </div>
 
 <script>
-const API_BASE_URL = 'https://rent-tracker-api.onrender.com'; 
+const tenantId = '<?php echo $tenant_id; ?>';
+const apiBaseUrl = '<?php echo $api_base_url; ?>';
 
-// Global variables
-let dashboardData = null;
-let currentFilter = 'all';
-
-// Load dashboard data on page load
+// Load dashboard data when page loads
 document.addEventListener('DOMContentLoaded', function() {
-    loadDashboard();
+    loadDashboardStats();
+    loadBills();
 });
 
-async function loadDashboard() {
-    showLoading();
-    
+async function loadDashboardStats() {
     try {
-        const response = await fetch(`${API_BASE_URL}/dashboard_api.php`, {
-            method: 'GET',
-            credentials: 'include', // Include session cookies
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-
+        const response = await fetch(`${apiBaseUrl}/tenant_dashboard_stats.php?tenant_id=${tenantId}`);
         const data = await response.json();
-
-        if (!data.success) {
-            if (data.redirect) {
-                window.location.href = data.redirect;
+        
+        if (data.success) {
+            if (!data.has_class) {
+                // Redirect to join class page if no class found
+                window.location.href = 'join_class.php';
                 return;
             }
-            throw new Error(data.error || 'Failed to load dashboard data');
+            
+            displayStats(data.data);
+        } else {
+            displayStatsError(data.error || 'Failed to load statistics');
         }
-
-        dashboardData = data.data;
-        populateDashboard(dashboardData);
-        showDashboard();
-
     } catch (error) {
-        console.error('Dashboard loading error:', error);
-        showError(error.message);
+        console.error('Error loading dashboard stats:', error);
+        displayStatsError('Network error occurred');
     }
 }
 
-function populateDashboard(data) {
-    // Populate tenant info
-    document.getElementById('tenantName').textContent = data.tenant.name;
-
-    // Populate stats
-    const stats = data.stats;
-    document.getElementById('totalBills').textContent = `₦${formatNumber(stats.total_bills)}`;
-    document.getElementById('totalPaid').textContent = `₦${formatNumber(stats.total_paid)}`;
-    document.getElementById('balance').textContent = `₦${formatNumber(stats.balance)}`;
-    document.getElementById('overdueBills').textContent = stats.overdue_count;
-    document.getElementById('dueSoonBills').textContent = stats.due_soon_count;
-    document.getElementById('totalUnpaid').textContent = stats.total_unpaid_count;
-
-    // Populate bills table
-    populateBillsTable(data.bills);
+function displayStats(stats) {
+    const statsGrid = document.getElementById('statsGrid');
+    statsGrid.innerHTML = `
+        <div class="stat-card">
+            <h3>Total Bills</h3>
+            <div class="amount">₦${numberFormat(stats.total_bills)}</div>
+            <div class="description">All assigned bills</div>
+        </div>
+        
+        <div class="stat-card">
+            <h3>Paid Amount</h3>
+            <div class="amount">₦${numberFormat(stats.total_paid)}</div>
+            <div class="description">Successfully paid</div>
+        </div>
+        
+        <div class="stat-card balance">
+            <h3>Outstanding Balance</h3>
+            <div class="amount">₦${numberFormat(stats.balance)}</div>
+            <div class="description">Amount pending</div>
+        </div>
+        
+        <div class="stat-card overdue">
+            <h3>Overdue Bills</h3>
+            <div class="amount">${stats.overdue_count}</div>
+            <div class="description">Require immediate attention</div>
+        </div>
+        
+        <div class="stat-card due-soon">
+            <h3>Due Soon</h3>
+            <div class="amount">${stats.due_soon_count}</div>
+            <div class="description">Due within 7 days</div>
+        </div>
+        
+        <div class="stat-card">
+            <h3>Total Unpaid</h3>
+            <div class="amount">${stats.total_unpaid_count}</div>
+            <div class="description">Pending payments</div>
+        </div>
+    `;
 }
 
-function populateBillsTable(bills) {
-    const tableBody = document.getElementById('billsTableBody');
+function displayStatsError(message) {
+    const statsGrid = document.getElementById('statsGrid');
+    statsGrid.innerHTML = `
+        <div class="error">
+            <i class="fas fa-exclamation-triangle"></i>
+            Error loading statistics: ${message}
+        </div>
+    `;
+}
+
+async function loadBills() {
+    try {
+        const response = await fetch(`${apiBaseUrl}/tenant_bills.php?tenant_id=${tenantId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            displayBills(data.data);
+        } else {
+            displayBillsError(data.error || 'Failed to load bills');
+        }
+    } catch (error) {
+        console.error('Error loading bills:', error);
+        displayBillsError('Network error occurred');
+    }
+}
+
+function displayBills(bills) {
+    const billsTableBody = document.getElementById('billsTableBody');
     
-    if (!bills || bills.length === 0) {
-        tableBody.innerHTML = `
+    if (bills.length === 0) {
+        billsTableBody.innerHTML = `
             <tr>
                 <td colspan="6" class="no-bills">
                     <i class="fas fa-file-invoice"></i>
@@ -208,56 +233,81 @@ function populateBillsTable(bills) {
         `;
         return;
     }
-
-    tableBody.innerHTML = '';
     
+    let rowsHtml = '';
     bills.forEach(bill => {
-        const row = document.createElement('tr');
+        const rowClass = bill.status === 'overdue' ? 'overdue' : (bill.status === 'due_soon' ? 'due-soon' : '');
+        const filterClass = getFilterClass(bill);
         
-        // Add CSS classes for filtering and styling
-        let rowClasses = [];
-        if (bill.is_overdue && !bill.paid) {
-            rowClasses.push('overdue');
-        } else if (bill.due_soon && !bill.paid) {
-            rowClasses.push('due-soon');
-        }
-        
-        row.className = rowClasses.join(' ');
-        row.setAttribute('data-filter', bill.filter_classes.join(' '));
-
-        row.innerHTML = `
-            <td>
-                <div style="display: flex; align-items: center;">
-                    <span class="utility-icon ${bill.utility_type.class}">
-                        <i class="${bill.utility_type.icon}"></i>
-                    </span>
-                    <strong>${bill.name}</strong>
-                </div>
-            </td>
-            <td><strong>₦${formatNumber(bill.amount)}</strong></td>
-            <td class="due-date">${bill.due_date_formatted}</td>
-            <td>
-                ${bill.paid 
-                    ? '<span class="status-badge status-paid">Paid</span>'
-                    : `<a href="make_payment.php?bill_id=${bill.id}" class="pay-btn">Pay Now</a>`
-                }
-            </td>
-            <td>
-                <div class="landlord-info">
-                    <div class="landlord-avatar">${bill.landlord.initials}</div>
-                    <span>${bill.landlord.name}</span>
-                </div>
-            </td>
-            <td>
-                ${bill.note ? `<span class="note-tag">${bill.note}</span>` : '-'}
-            </td>
+        rowsHtml += `
+            <tr class="${rowClass}" data-filter="${filterClass}">
+                <td>
+                    <div style="display: flex; align-items: center;">
+                        <span class="utility-icon utility-${bill.utility_type}">
+                            <i class="${bill.utility_icon}"></i>
+                        </span>
+                        <strong>${bill.bill_name}</strong>
+                    </div>
+                </td>
+                <td><strong>₦${numberFormat(bill.amount)}</strong></td>
+                <td class="due-date">${bill.due_date_formatted}</td>
+                <td>
+                    ${bill.paid 
+                        ? '<span class="status-badge status-paid">Paid</span>'
+                        : `<a href="make_payment.php?bill_id=${bill.id}" class="pay-btn">Pay Now</a>`
+                    }
+                </td>
+                <td>
+                    <div class="landlord-info">
+                        <div class="landlord-avatar">${bill.landlord_initials}</div>
+                        <span>${bill.landlord_name}</span>
+                    </div>
+                </td>
+                <td>
+                    ${bill.note ? `<span class="note-tag">${bill.note}</span>` : '-'}
+                </td>
+            </tr>
         `;
-        
-        tableBody.appendChild(row);
     });
-
+    
+    billsTableBody.innerHTML = rowsHtml;
+    
     // Add hover effects to pay buttons
     addPayButtonEffects();
+}
+
+function getFilterClass(bill) {
+    let filterClass = '';
+    if (bill.paid) {
+        filterClass = 'paid';
+    } else {
+        filterClass = 'unpaid';
+        if (bill.is_overdue) {
+            filterClass += ' overdue';
+        } else if (bill.due_soon) {
+            filterClass += ' due-soon';
+        }
+    }
+    return filterClass;
+}
+
+function displayBillsError(message) {
+    const billsTableBody = document.getElementById('billsTableBody');
+    billsTableBody.innerHTML = `
+        <tr>
+            <td colspan="6" class="error">
+                <i class="fas fa-exclamation-triangle"></i>
+                Error loading bills: ${message}
+            </td>
+        </tr>
+    `;
+}
+
+function numberFormat(number) {
+    return new Intl.NumberFormat('en-NG', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(number);
 }
 
 function filterBills(filter) {
@@ -268,8 +318,6 @@ function filterBills(filter) {
     // Update active button
     buttons.forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
-    
-    currentFilter = filter;
     
     rows.forEach(row => {
         const filterData = row.getAttribute('data-filter');
@@ -283,7 +331,7 @@ function filterBills(filter) {
         } else if (filter === 'due-soon' && filterData && filterData.includes('due-soon')) {
             row.style.display = '';
         } else if (!filterData) {
-            // This is the "no bills" row
+            // This is the "no bills" or error row
             row.style.display = filter === 'all' ? '' : 'none';
         } else {
             row.style.display = 'none';
@@ -302,110 +350,7 @@ function addPayButtonEffects() {
         });
     });
 }
-
-// Utility functions
-function formatNumber(num) {
-    return new Intl.NumberFormat('en-NG', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    }).format(num);
-}
-
-function showLoading() {
-    document.getElementById('loadingState').style.display = 'block';
-    document.getElementById('errorState').style.display = 'none';
-    document.getElementById('dashboardContent').style.display = 'none';
-}
-
-function showError(message) {
-    document.getElementById('errorMessage').textContent = message;
-    document.getElementById('loadingState').style.display = 'none';
-    document.getElementById('errorState').style.display = 'block';
-    document.getElementById('dashboardContent').style.display = 'none';
-}
-
-function showDashboard() {
-    document.getElementById('loadingState').style.display = 'none';
-    document.getElementById('errorState').style.display = 'none';
-    document.getElementById('dashboardContent').style.display = 'block';
-}
-
-// Auto-refresh dashboard every 5 minutes
-setInterval(loadDashboard, 5 * 60 * 1000);
 </script>
-
-<style>
-/* Loading and Error States */
-.loading-container, .error-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 400px;
-    text-align: center;
-}
-
-.spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #007bff;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 20px;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.error-message {
-    max-width: 400px;
-}
-
-.error-message i {
-    font-size: 48px;
-    color: #dc3545;
-    margin-bottom: 20px;
-}
-
-.retry-btn {
-    background: #007bff;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 5px;
-    cursor: pointer;
-    margin-top: 20px;
-}
-
-.retry-btn:hover {
-    background: #0056b3;
-}
-
-/* Responsive design */
-@media (max-width: 768px) {
-    .stats-grid {
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 15px;
-    }
-    
-    .bills-table {
-        font-size: 14px;
-    }
-    
-    .filter-buttons {
-        flex-wrap: wrap;
-        gap: 5px;
-    }
-    
-    .filter-btn {
-        font-size: 12px;
-        padding: 8px 12px;
-    }
-}
-</style>
 
 </body>
 </html>
