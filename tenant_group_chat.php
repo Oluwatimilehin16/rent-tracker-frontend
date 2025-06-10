@@ -1,5 +1,7 @@
 <?php
-
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 // Ensure tenant is logged in
 if (!isset($_SESSION['tenant_id'])) {
     header("Location: login.php");
