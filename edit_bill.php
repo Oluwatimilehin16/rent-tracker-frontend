@@ -10,7 +10,7 @@ $landlord_id = $_SESSION['landlord_id'];
 $bill_id = (int)$_GET['id'];
 
 // Define your API base URL
-$api_base_url = 'https://your-render-api-url.com'; // Replace with your actual Render API URL
+$api_base_url = 'https://rent-tracker-api.onrender.com'; // Replace with your actual Render API URL
 ?>
 <!DOCTYPE html>
 <html lang="en">
