@@ -21,7 +21,7 @@ $API_BASE_URL = "https://rent-tracker-api.onrender.com"; // Replace with your ac
 <head>
     <title>Group Chat (Landlord)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" type="text/css" href="group_chat_landlord.css">
+    <link rel="stylesheet"  href="group_chat_landlord.css">
 </head>
 <body>
 
