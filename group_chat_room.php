@@ -436,7 +436,10 @@ if (!$group_id) {
     }
 
     // Toggle sidebar
-   function toggleSidebar() {
+// REPLACE your existing window resize and toggle functions with these:
+
+// Updated toggle sidebar function
+function toggleSidebar() {
     const sidebar = document.getElementById("sidebar");
     const toggleBtn = document.getElementById("toggleBtn");
 
@@ -449,7 +452,9 @@ if (!$group_id) {
         toggleBtn.textContent = "Hide";
     }
 }
-    document.addEventListener("click", function(e) {
+
+// Close sidebar when clicking outside on mobile
+document.addEventListener("click", function(e) {
     const sidebar = document.getElementById("sidebar");
     const toggleBtn = document.getElementById("toggleBtn");
     
@@ -464,25 +469,45 @@ if (!$group_id) {
     }
 });
 
-    // Handle window resize
-    window.addEventListener("resize", function() {
-        if (window.innerWidth > 768) {
-            document.getElementById("sidebar").classList.remove("hidden");
-            document.getElementById("sidebar").style.display = "flex";
-        }
-    });
+// REPLACE your window resize handler with this:
+window.addEventListener("resize", function() {
+    const sidebar = document.getElementById("sidebar");
+    const toggleBtn = document.getElementById("toggleBtn");
+    
+    if (window.innerWidth > 768) {
+        // Desktop: show sidebar by default
+        sidebar.classList.remove("hidden");
+        sidebar.style.display = "flex";
+        toggleBtn.textContent = "Hide";
+    } else {
+        // Mobile: hide sidebar by default and reset styles
+        sidebar.classList.add("hidden");
+        sidebar.style.display = ""; // Reset inline style
+        toggleBtn.textContent = "Show";
+    }
+});
 
-    // Click outside to close search
-    document.addEventListener("click", function(e) {
-        if (!searchContainer.contains(e.target)) {
-            searchResults.style.display = "none";
-        }
-    });
+// ADD this initialization for mobile-first approach
+function initializeMobileLayout() {
+    const sidebar = document.getElementById("sidebar");
+    const toggleBtn = document.getElementById("toggleBtn");
+    
+    if (window.innerWidth <= 768) {
+        // Start with sidebar hidden on mobile
+        sidebar.classList.add("hidden");
+        toggleBtn.textContent = "Show";
+    } else {
+        // Start with sidebar visible on desktop
+        sidebar.classList.remove("hidden");
+        toggleBtn.textContent = "Hide";
+    }
+}
 
-    // Initialize when page loads
-    window.onload = function() {
-        initializeChat();
-    };
+// UPDATE your window.onload function:
+window.onload = function() {
+    initializeMobileLayout(); // Initialize mobile layout first
+    initializeChat();
+};
 </script>
 </body>
 </html>
