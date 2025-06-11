@@ -445,13 +445,52 @@ $API_BASE_URL = "https://rent-tracker-api.onrender.com"; // Replace with your ac
     }
 
     // ✅ Toggle sidebar
-    function toggleSidebar() {
-        const sidebar = document.getElementById("sidebar");
-        const toggleBtn = document.getElementById("toggleBtn");
+    // Updated toggle sidebar function
+function toggleSidebar() {
+    const sidebar = document.getElementById("sidebar");
+    const toggleBtn = document.getElementById("toggleBtn");
 
-        sidebar.classList.toggle("hidden");
-        toggleBtn.textContent = sidebar.classList.contains("hidden") ? "Show" : "Hide";
+    sidebar.classList.toggle("hidden");
+    
+    // Update button text based on state
+    if (sidebar.classList.contains("hidden")) {
+        toggleBtn.textContent = "Show";
+    } else {
+        toggleBtn.textContent = "Hide";
     }
+}
+
+// Close sidebar when clicking outside on mobile
+document.addEventListener("click", function(e) {
+    const sidebar = document.getElementById("sidebar");
+    const toggleBtn = document.getElementById("toggleBtn");
+    
+    // Only apply this behavior on mobile screens
+    if (window.innerWidth <= 768) {
+        if (!sidebar.contains(e.target) && !toggleBtn.contains(e.target)) {
+            if (!sidebar.classList.contains("hidden")) {
+                sidebar.classList.add("hidden");
+                toggleBtn.textContent = "Show";
+            }
+        }
+    }
+});
+
+// Handle window resize - ensure sidebar behaves correctly
+window.addEventListener("resize", function() {
+    const sidebar = document.getElementById("sidebar");
+    const toggleBtn = document.getElementById("toggleBtn");
+    
+    if (window.innerWidth > 768) {
+        // Desktop: show sidebar by default
+        sidebar.classList.remove("hidden");
+        toggleBtn.textContent = "Hide";
+    } else {
+        // Mobile: hide sidebar by default
+        sidebar.classList.add("hidden");
+        toggleBtn.textContent = "Show";
+    }
+});
 
     // ✅ Initialize page
     window.onload = async function () {
