@@ -436,13 +436,33 @@ if (!$group_id) {
     }
 
     // Toggle sidebar
-    function toggleSidebar() {
-        const sidebar = document.getElementById("sidebar");
-        const toggleBtn = document.getElementById("toggleBtn");
+   function toggleSidebar() {
+    const sidebar = document.getElementById("sidebar");
+    const toggleBtn = document.getElementById("toggleBtn");
 
-        sidebar.classList.toggle("hidden");
-        toggleBtn.textContent = sidebar.classList.contains("hidden") ? "Show" : "Hide";
+    sidebar.classList.toggle("hidden");
+    
+    // Update button text based on state
+    if (sidebar.classList.contains("hidden")) {
+        toggleBtn.textContent = "Show";
+    } else {
+        toggleBtn.textContent = "Hide";
     }
+}
+    document.addEventListener("click", function(e) {
+    const sidebar = document.getElementById("sidebar");
+    const toggleBtn = document.getElementById("toggleBtn");
+    
+    // Only apply this behavior on mobile screens
+    if (window.innerWidth <= 768) {
+        if (!sidebar.contains(e.target) && !toggleBtn.contains(e.target)) {
+            if (!sidebar.classList.contains("hidden")) {
+                sidebar.classList.add("hidden");
+                toggleBtn.textContent = "Show";
+            }
+        }
+    }
+});
 
     // Handle window resize
     window.addEventListener("resize", function() {
