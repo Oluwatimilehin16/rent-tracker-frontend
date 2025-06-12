@@ -52,14 +52,7 @@ $api_base_url = 'https://rent-tracker-api.onrender.com';
         }
 
         /* Mobile Header Styles */
-        header {
-            position: relative;
-            padding: 0 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-        }
+   
 
         .hamburger {
             display: none;
@@ -69,6 +62,7 @@ $api_base_url = 'https://rent-tracker-api.onrender.com';
             border: none;
             background: none;
             z-index: 1001;
+            color: #f8f9fa;
         }
 
         .hamburger span {
