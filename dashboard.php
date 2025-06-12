@@ -71,7 +71,7 @@ $api_base_url = 'https://rent-tracker-api.onrender.com';
         .hamburger span {
             width: 25px;
             height: 3px;
-            background-color: #333;
+            background-color: white;
             margin: 3px 0;
             transition: 0.3s;
             border-radius: 2px;
@@ -101,7 +101,7 @@ $api_base_url = 'https://rent-tracker-api.onrender.com';
                 right: -100%;
                 width: 280px;
                 height: 100vh;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                background: linear-gradient(135deg, #004d00 0%, #006400 100%); 
                 transition: right 0.3s ease;
                 z-index: 1000;
                 padding-top: 80px;
