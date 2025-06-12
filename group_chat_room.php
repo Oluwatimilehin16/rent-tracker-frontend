@@ -435,79 +435,41 @@ if (!$group_id) {
         }
     }
 
-    // Toggle sidebar
-// REPLACE your existing window resize and toggle functions with these:
+    // Toggle sidebar function (simplified)
+    function toggleSidebar() {
+        const sidebar = document.getElementById("sidebar");
+        const toggleBtn = document.getElementById("toggleBtn");
 
-// Updated toggle sidebar function
-function toggleSidebar() {
-    const sidebar = document.getElementById("sidebar");
-    const toggleBtn = document.getElementById("toggleBtn");
-
-    sidebar.classList.toggle("hidden");
-    
-    // Update button text based on state
-    if (sidebar.classList.contains("hidden")) {
-        toggleBtn.textContent = "Show";
-    } else {
-        toggleBtn.textContent = "Hide";
-    }
-}
-
-// Close sidebar when clicking outside on mobile
-document.addEventListener("click", function(e) {
-    const sidebar = document.getElementById("sidebar");
-    const toggleBtn = document.getElementById("toggleBtn");
-    
-    // Only apply this behavior on mobile screens
-    if (window.innerWidth <= 768) {
-        if (!sidebar.contains(e.target) && !toggleBtn.contains(e.target)) {
-            if (!sidebar.classList.contains("hidden")) {
-                sidebar.classList.add("hidden");
-                toggleBtn.textContent = "Show";
-            }
+        sidebar.classList.toggle("hidden");
+        
+        // Update button text based on state
+        if (sidebar.classList.contains("hidden")) {
+            toggleBtn.textContent = "Show";
+        } else {
+            toggleBtn.textContent = "Hide";
         }
     }
-});
 
-// REPLACE your window resize handler with this:
-window.addEventListener("resize", function() {
-    const sidebar = document.getElementById("sidebar");
-    const toggleBtn = document.getElementById("toggleBtn");
-    
-    if (window.innerWidth > 768) {
-        // Desktop: show sidebar by default
-        sidebar.classList.remove("hidden");
-        sidebar.style.display = "flex";
-        toggleBtn.textContent = "Hide";
-    } else {
-        // Mobile: hide sidebar by default and reset styles
-        sidebar.classList.add("hidden");
-        sidebar.style.display = ""; // Reset inline style
-        toggleBtn.textContent = "Show";
-    }
-});
+    // Simplified window resize handler
+    window.addEventListener("resize", function() {
+        const sidebar = document.getElementById("sidebar");
+        const toggleBtn = document.getElementById("toggleBtn");
+        
+        if (window.innerWidth > 768) {
+            // Desktop: show sidebar by default
+            sidebar.classList.remove("hidden");
+            toggleBtn.textContent = "Hide";
+        } else {
+            // Mobile: hide sidebar by default
+            sidebar.classList.add("hidden");
+            toggleBtn.textContent = "Show";
+        }
+    });
 
-// ADD this initialization for mobile-first approach
-function initializeMobileLayout() {
-    const sidebar = document.getElementById("sidebar");
-    const toggleBtn = document.getElementById("toggleBtn");
-    
-    if (window.innerWidth <= 768) {
-        // Start with sidebar hidden on mobile
-        sidebar.classList.add("hidden");
-        toggleBtn.textContent = "Show";
-    } else {
-        // Start with sidebar visible on desktop
-        sidebar.classList.remove("hidden");
-        toggleBtn.textContent = "Hide";
-    }
-}
-
-// UPDATE your window.onload function:
-window.onload = function() {
-    initializeMobileLayout(); // Initialize mobile layout first
-    initializeChat();
-};
+    // Simplified window onload
+    window.onload = function() {
+        initializeChat();
+    };
 </script>
 </body>
 </html>
