@@ -62,6 +62,9 @@ $api_base_url = 'https://rent-tracker-api.onrender.com';
             border: none;
             background: none;
             z-index: 1001;
+            
+        }
+        #hamburgerBtn{
             color: #f8f9fa;
         }
 
