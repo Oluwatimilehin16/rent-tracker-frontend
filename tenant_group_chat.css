@@ -32,7 +32,7 @@
         header .logo {
             display: flex;
             align-items: center;
-            margin-right: auto; /* This pushes the logo to the far left */
+            margin-right: auto; 
         }
 
         header .logo img {

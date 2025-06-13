@@ -492,6 +492,11 @@ window.addEventListener("load", function() {
         toggleBtn.textContent = "Show";
     }
 });
+
+    // Simplified window onload
+    window.onload = function() {
+        initializeChat();
+    };
 </script>
 </body>
 </html>
