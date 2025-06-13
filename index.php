@@ -14,15 +14,15 @@
             <div class="logo">
         <a href="index.php"><img src="./assets/logo.png" alt="RentTracker"></a>
     </div>
-            <nav>
-                <ul class="nav-menu">
+             <nav>
+                <ul class="nav-menu" id="navMenu">
                     <li><a href="#home">Home</a></li>
                     <li><a href="#features">Features</a></li>
                     <li><a href="#how-it-works">How It Works</a></li>
                     <li><a href="#blog">Blog</a></li>
                     <li><a href="#contact">Contact</a></li>
                 </ul>
-                <div class="mobile-menu">☰</div>
+                <div class="mobile-menu" id="mobileMenu">☰</div>
             </nav>
         </div>
     </header>
@@ -516,6 +516,105 @@ document.querySelectorAll('.faq-question').forEach(question => {
             setTimeout(() => authBox.style.opacity = "1", 100);
         }
     });
+    // Enhanced Mobile Menu Functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const mobileMenuBtn = document.getElementById('mobileMenu');
+    const navMenu = document.getElementById('navMenu');
+    const navLinks = document.querySelectorAll('.nav-menu a');
+    const body = document.body;
+    
+    // Toggle mobile menu
+    function toggleMobileMenu() {
+        const isOpen = navMenu.classList.contains('active');
+        
+        if (isOpen) {
+            closeMobileMenu();
+        } else {
+            openMobileMenu();
+        }
+    }
+    
+    // Open mobile menu
+    function openMobileMenu() {
+        navMenu.classList.add('active');
+        mobileMenuBtn.classList.add('active');
+        body.classList.add('menu-open');
+        
+        // Change hamburger to X
+        mobileMenuBtn.innerHTML = '✕';
+        
+        // Animate menu items
+        navLinks.forEach((link, index) => {
+            link.style.opacity = '0';
+            link.style.transform = 'translateY(-20px)';
+            setTimeout(() => {
+                link.style.opacity = '1';
+                link.style.transform = 'translateY(0)';
+            }, index * 100 + 100);
+        });
+    }
+    
+    // Close mobile menu
+    function closeMobileMenu() {
+        navMenu.classList.remove('active');
+        mobileMenuBtn.classList.remove('active');
+        body.classList.remove('menu-open');
+        
+        // Change X back to hamburger
+        mobileMenuBtn.innerHTML = '☰';
+        
+        // Reset link animations
+        navLinks.forEach(link => {
+            link.style.opacity = '';
+            link.style.transform = '';
+        });
+    }
+    
+    // Event listeners
+    mobileMenuBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleMobileMenu();
+    });
+    
+    // Close menu when clicking on navigation links
+    navLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            closeMobileMenu();
+        });
+    });
+    
+    // Close menu when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!navMenu.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
+            closeMobileMenu();
+        }
+    });
+    
+    // Close menu on escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeMobileMenu();
+        }
+    });
+    
+    // Handle window resize
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 768) {
+            closeMobileMenu();
+        }
+    });
+    
+    // Prevent menu from staying open during orientation change
+    window.addEventListener('orientationchange', function() {
+        setTimeout(function() {
+            if (window.innerWidth > 768) {
+                closeMobileMenu();
+            }
+        }, 100);
+    });
+});
+
 </script>
 
 </body>

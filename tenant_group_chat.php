@@ -78,7 +78,7 @@ $api_base_url = 'https://rent-tracker-api.onrender.com';
             <span></span>
         </div>
         <nav>
-            <ul>
+            <ul id="navigation">
                 <li><a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
                 <li><a href="join_class.php"><i class="fas fa-user-plus"></i> Join Group</a></li>
                 <li><a href="tenant_group_chat.php"><i class="fas fa-envelope"></i> Messages</a></li>
@@ -111,33 +111,6 @@ $api_base_url = 'https://rent-tracker-api.onrender.com';
         let groupsData = [];
         let currentFilter = 'all';
         let currentView = 'grid';
-        document.addEventListener('DOMContentLoaded', function() {
-    const hamburgerBtn = document.getElementById('hamburgerBtn');
-    const navigation = document.getElementById('navigation');
-    const navOverlay = document.getElementById('navOverlay');
-
-    hamburgerBtn.addEventListener('click', function() {
-        hamburgerBtn.classList.toggle('active');
-        navigation.classList.toggle('active');
-        navOverlay.classList.toggle('active');
-    });
-
-    navOverlay.addEventListener('click', function() {
-        hamburgerBtn.classList.remove('active');
-        navigation.classList.remove('active');
-        navOverlay.classList.remove('active');
-    });
-
-    // Close menu when clicking on nav links
-    const navLinks = navigation.querySelectorAll('a');
-    navLinks.forEach(link => {
-        link.addEventListener('click', function() {
-            hamburgerBtn.classList.remove('active');
-            navigation.classList.remove('active');
-            navOverlay.classList.remove('active');
-        });
-    });
-});
 
         // Load data when page loads
         document.addEventListener('DOMContentLoaded', function() {
@@ -356,6 +329,33 @@ $api_base_url = 'https://rent-tracker-api.onrender.com';
             currentView = viewType;
         }
 
+        document.addEventListener('DOMContentLoaded', function() {
+            const hamburger = document.getElementById('hamburger');
+            const navigation = document.getElementById('navigation');
+
+            hamburger.addEventListener('click', function() {
+                hamburger.classList.toggle('active');
+                navigation.classList.toggle('active');
+            });
+
+            // Close menu when clicking on nav links
+            const navLinks = navigation.querySelectorAll('a');
+            navLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    hamburger.classList.remove('active');
+                    navigation.classList.remove('active');
+                });
+            });
+
+            // Close menu when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!hamburger.contains(e.target) && !navigation.contains(e.target)) {
+                    hamburger.classList.remove('active');
+                    navigation.classList.remove('active');
+                }
+            });
+        });
+        
         // Group Info Modal
         function viewGroupInfo(groupId, groupName) {
             const group = groupsData.find(g => g.id === groupId);
