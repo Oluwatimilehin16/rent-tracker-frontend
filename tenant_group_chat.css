@@ -29,6 +29,12 @@
             height: 70px;
         }
 
+        header .logo {
+            display: flex;
+            align-items: center;
+            margin-right: auto; /* This pushes the logo to the far left */
+        }
+
         header .logo img {
             width: 95px;
             height: auto;
@@ -42,6 +48,7 @@
             z-index: 101;
             background: none;
             border: none;
+            margin-left: auto; 
         }
 
         .hamburger span {
