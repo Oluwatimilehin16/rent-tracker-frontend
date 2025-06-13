@@ -70,6 +70,13 @@ $api_base_url = 'https://rent-tracker-api.onrender.com';
         <div class="logo">
             <a href="index.php"><img src="./assets/logo.png" alt="RentTracker" style="height: 40px;"></a>
         </div>
+
+        <!-- Hamburger Menu -->
+        <div class="hamburger" id="hamburger">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
         <nav>
             <ul>
                 <li><a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
@@ -97,12 +104,40 @@ $api_base_url = 'https://rent-tracker-api.onrender.com';
     </div>
 
     <script>
+        
         const tenantId = '<?php echo $tenant_id; ?>';
         const apiBaseUrl = '<?php echo $api_base_url; ?>';
         
         let groupsData = [];
         let currentFilter = 'all';
         let currentView = 'grid';
+        document.addEventListener('DOMContentLoaded', function() {
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const navigation = document.getElementById('navigation');
+    const navOverlay = document.getElementById('navOverlay');
+
+    hamburgerBtn.addEventListener('click', function() {
+        hamburgerBtn.classList.toggle('active');
+        navigation.classList.toggle('active');
+        navOverlay.classList.toggle('active');
+    });
+
+    navOverlay.addEventListener('click', function() {
+        hamburgerBtn.classList.remove('active');
+        navigation.classList.remove('active');
+        navOverlay.classList.remove('active');
+    });
+
+    // Close menu when clicking on nav links
+    const navLinks = navigation.querySelectorAll('a');
+    navLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            hamburgerBtn.classList.remove('active');
+            navigation.classList.remove('active');
+            navOverlay.classList.remove('active');
+        });
+    });
+});
 
         // Load data when page loads
         document.addEventListener('DOMContentLoaded', function() {
@@ -361,6 +396,8 @@ $api_base_url = 'https://rent-tracker-api.onrender.com';
 
         // Initialize auto-refresh
         startAutoRefresh();
+
+        
     </script>
 </body>
 </html>
