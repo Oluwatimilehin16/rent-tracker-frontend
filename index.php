@@ -35,8 +35,8 @@
                     <h1 class="hero-title">Simplify Property Management</h1>
                     <p class="hero-subtitle">Connect landlords and tenants through seamless communication and transparent bill tracking</p>
                     <div class="cta-buttons">
-                        <a href="#" class="cta-btn cta-primary">Start as Landlord</a>
-                        <a href="#" class="cta-btn cta-secondary">Join as Tenant</a>
+                        <a href="register.php" class="cta-btn cta-primary">Start as Landlord</a>
+                        <a href="register.php" class="cta-btn cta-secondary">Join as Tenant</a>
                     </div>
                 </div>
             </div>
@@ -45,7 +45,7 @@
                     <h1 class="hero-title">Real-Time Communication</h1>
                     <p class="hero-subtitle">Stay connected with instant messaging and group chat functionality for each property</p>
                     <div class="cta-buttons">
-                        <a href="#" class="cta-btn cta-primary">Get Started Today</a>
+                        <a href="register.php" class="cta-btn cta-primary">Get Started Today</a>
                         <a href="#features" class="cta-btn cta-secondary">Learn More</a>
                     </div>
                 </div>
@@ -55,7 +55,7 @@
                     <h1 class="hero-title">Comprehensive Bill Management</h1>
                     <p class="hero-subtitle">Track rent, utilities, maintenance fees and all property expenses in one organized platform</p>
                     <div class="cta-buttons">
-                        <a href="#" class="cta-btn cta-primary">Explore Platform</a>
+                        <a href="register.php" class="cta-btn cta-primary">Explore Platform</a>
                         <a href="#how-it-works" class="cta-btn cta-secondary">See How It Works</a>
                     </div>
                 </div>
