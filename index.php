@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google-site-verification" content="ohyWKE1fr792QZoJRdKpp9-s_avwuE4jUofibfabHAo" />
     <title>Rent Tracker - Simplify Property Management</title>
     <link rel="stylesheet" href="index.css">
 </head>
