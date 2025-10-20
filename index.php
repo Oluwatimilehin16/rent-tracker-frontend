@@ -2,6 +2,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Link the manifest -->
+<link rel="manifest" href="/manifest.json">
+
+<!-- Theme color for browsers -->
+<meta name="theme-color" content="#0a7a3a">
+
+<!-- Apple device support -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rent Tracker - Simplify Property Management</title>
