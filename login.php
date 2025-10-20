@@ -1,61 +1,69 @@
 <?php
-include 'config.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
 if (isset($_POST['submit'])) {
-    $email = mysqli_real_escape_string($conn, $_POST['email']);
-    $password = mysqli_real_escape_string($conn, $_POST['password']);
+    // Call your API instead of direct database
+   $api_url = 'https://rent-tracker-api.onrender.com/login.php'; // make sure this is the right file
 
-    // Fetch user based on email
-    $select_user = mysqli_query($conn, "SELECT * FROM `users` WHERE email='$email'") or die(mysqli_error($conn));
+$post_data = [
+    'email' => $_POST['email'],
+    'password' => $_POST['password']
+];
 
-    if (mysqli_num_rows($select_user) > 0) {
-        $row = mysqli_fetch_assoc($select_user);
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $api_url);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post_data));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
-        // Verify password
-        if (password_verify($password, $row['password'])) {
-            $_SESSION['users_id'] = $row['id']; 
-            $_SESSION['users_name'] = $row['firstname'];
-            $_SESSION['users_email'] = $row['email'];
-            $_SESSION['users_role'] = $row['users_role']; // Ensure this matches your DB field
+$response = curl_exec($ch);
+curl_close($ch);
 
-            // Redirect based on user role
-            if ($row['users_role'] == 'landlord') {
-                $_SESSION['landlord_id'] = $row['id'];
-                $_SESSION['landlord_name'] = $row['firstname'];
-                $_SESSION['landlord_email'] = $row['email'];
-                header("Location: add_bill.php");
+if (!$response) {
+    die('API request failed.');
+}
+
+$result = json_decode($response, true);
+
+if (json_last_error() !== JSON_ERROR_NONE) {
+    die('JSON decode error: ' . json_last_error_msg());
+}
+
+if (!isset($result['success'])) {
+    die('Malformed API response: ' . print_r($result, true));
+}
+
+    if ($result['success']) {
+        $user = $result['user'];
+        $_SESSION['users_id'] = $user['id'];
+        $_SESSION['users_name'] = $user['firstname'];
+        $_SESSION['users_email'] = $user['email'];
+        $_SESSION['users_role'] = $user['users_role'];
+
+        // Redirect based on role
+        if ($user['users_role'] == 'landlord') {
+            $_SESSION['landlord_id'] = $user['id'];
+            $_SESSION['landlord_name'] = $user['firstname'];
+            $_SESSION['landlord_email'] = $user['email'];
+            header("Location: add_bill.php");
+            exit();
+        } else {
+            $_SESSION['tenant_id'] = $user['id'];
+            $_SESSION['tenant_name'] = $user['firstname'];
+            $_SESSION['tenant_email'] = $user['email'];
+
+            if ($user['class_status'] == 'in_class') {
+                header('Location: dashboard.php');
                 exit();
             } else {
-                $_SESSION['tenant_id'] = $row['id'];
-                $_SESSION['tenant_name'] = $row['firstname'];
-                $_SESSION['tenant_email'] = $row['email'];
-
-                // Check if tenant is already part of a class
-                $tenant_id = $row['id'];
-                $class_check = mysqli_query($conn, "SELECT * FROM class_members WHERE tenant_id = '$tenant_id'");
-
-                if (!$class_check) {
-                    die("Query Error: " . mysqli_error($conn));
-                }
-
-                if (mysqli_num_rows($class_check) > 0) {
-                    // Tenant already in class
-                    header('Location: dashboard.php');
-                    exit();
-                } else {
-                    // Tenant not yet in any class
-                    header('Location: join_class.php');
-                    exit();
-                }
+                header('Location: join_class.php');
+                exit();
             }
-        } else {
-            $message[] = 'Incorrect password!';
         }
     } else {
-        $message[] = 'Incorrect email or password!';
+        $message[] = $result['message'];
     }
 }
 ?>

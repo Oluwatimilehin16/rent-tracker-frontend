@@ -1,51 +1,52 @@
 <?php
-include 'config.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
 if (isset($_POST['submit'])) {
-    $firstname = htmlspecialchars($_POST["firstname"]);
-    $lastname  = htmlspecialchars($_POST["lastname"]);
-    $email     = htmlspecialchars($_POST["email"]);
-    $password  = password_hash($_POST['password'], PASSWORD_DEFAULT);
-    $users_role = htmlspecialchars($_POST["users_role"]);
-
-    // Check if the user already exists
-    $select_user = mysqli_query($conn, "SELECT * FROM `users` WHERE email='$email'") or die(mysqli_error($conn));
-
-    if (mysqli_num_rows($select_user) > 0) {
-        $message[] = 'User already exists!';
-    } else {
-        $query = "INSERT INTO `users`(`firstname`, `lastname`, `email`, `password`, `users_role`) 
-                  VALUES ('$firstname','$lastname', '$email', '$password', '$users_role')";
-        if (mysqli_query($conn, $query)) {
-            $users_id = mysqli_insert_id($conn);
-
-            // Set session variables
-            $_SESSION['users_id'] = $users_id;
-            $_SESSION['firstname'] = $firstname;
-            $_SESSION['email'] = $email;
-            $_SESSION['users_role'] = $users_role;
-
-            // Redirect based on role
-            if ($users_role === "tenant") {
-                header('location: dashboard.php');
-                exit();
-            } elseif ($users_role === "landlord") {
-                header("Location: add_bill.php");
-                exit();
-            }
-        } else {
-            $message[] = 'Registration failed, please try again!';
+    $api_url = 'https://rent-tracker-api.onrender.com/register.php'; // Change to your API URL
+    
+    $post_data = [
+        'firstname' => $_POST['firstname'],
+        'lastname' => $_POST['lastname'],
+        'email' => $_POST['email'],
+        'password' => $_POST['password'],
+        'users_role' => $_POST['users_role']
+    ];
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $api_url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post_data));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    
+    $response = curl_exec($ch);
+    curl_close($ch);
+    
+    $result = json_decode($response, true);
+    
+    if ($result['success']) {
+        $user = $result['user'];
+        
+        // Set session variables
+        $_SESSION['users_id'] = $user['id'];
+        $_SESSION['firstname'] = $user['firstname'];
+        $_SESSION['email'] = $user['email'];
+        $_SESSION['users_role'] = $user['users_role'];
+        
+        // Redirect based on role
+        if ($user['users_role'] === "tenant") {
+            header('location: dashboard.php');
+            exit();
+        } elseif ($user['users_role'] === "landlord") {
+            header("Location: add_bill.php");
+            exit();
         }
+    } else {
+        $message[] = $result['message'];
     }
 }
-
-
 ?>
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>

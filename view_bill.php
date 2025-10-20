@@ -1,5 +1,4 @@
 <?php
-include 'config.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 if (!isset($_SESSION['landlord_id'])) {
@@ -10,33 +9,25 @@ if (!isset($_SESSION['landlord_id'])) {
 $landlord_id = $_SESSION['landlord_id'];
 $bill_id = (int)$_GET['id'];
 
-// Fetch bill details
-$query = "
-    SELECT b.*, c.class_name, 
-           CONCAT(u.firstname, ' ', u.lastname) AS tenant_name,
-           u.email AS tenant_email
-    FROM bills b
-    LEFT JOIN classes c ON c.id = b.class_id
-    LEFT JOIN user_classes uc ON uc.class_id = c.id
-    LEFT JOIN users u ON u.id = uc.user_id AND u.users_role = 'tenant'
-    WHERE b.id = $bill_id AND b.landlord_id = '$landlord_id'
-    LIMIT 1
-";
+// Call API instead of direct database query
+$api_url = 'https://rent-tracker-api.onrender.com/view_bill.php?landlord_id=' . $landlord_id . '&bill_id=' . $bill_id;
 
-$result = mysqli_query($conn, $query);
-$bill = mysqli_fetch_assoc($result);
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $api_url);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = curl_exec($ch);
+curl_close($ch);
 
-if (!$bill) {
+$result = json_decode($response, true);
+
+if (!$result['success']) {
     header("Location: view_bills.php");
     exit();
 }
 
-// Calculate due status
-$today = date('Y-m-d');
-$due_date = new DateTime($bill['due_date']);
-$today_date = new DateTime($today);
-$diff = $today_date->diff($due_date);
-$days_diff = $diff->invert ? -$diff->days : $diff->days;
+$bill = $result['bill'];
+$days_diff = $result['due_status']['days_diff'];
+$is_overdue = $result['due_status']['is_overdue'];
 ?>
 
 <!DOCTYPE html>
@@ -56,35 +47,30 @@ $days_diff = $diff->invert ? -$diff->days : $diff->days;
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        
         .bill-header {
             text-align: center;
             margin-bottom: 30px;
             padding-bottom: 20px;
             border-bottom: 2px solid #eee;
         }
-        
         .bill-amount {
             font-size: 2.5em;
             font-weight: bold;
             color: #2c3e50;
             margin: 10px 0;
         }
-        
         .info-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
             margin: 20px 0;
         }
-        
         .info-item {
             padding: 15px;
             background: #f8f9fa;
             border-radius: 8px;
             border-left: 4px solid #007bff;
         }
-        
         .info-label {
             font-weight: bold;
             color: #666;
@@ -92,12 +78,10 @@ $days_diff = $diff->invert ? -$diff->days : $diff->days;
             text-transform: uppercase;
             margin-bottom: 5px;
         }
-        
         .info-value {
             font-size: 1.1em;
             color: #2c3e50;
         }
-        
         .status-large {
             display: inline-block;
             padding: 10px 20px;
@@ -105,17 +89,14 @@ $days_diff = $diff->invert ? -$diff->days : $diff->days;
             font-weight: bold;
             font-size: 1.1em;
         }
-        
         .status-paid {
             background: #d4edda;
             color: #155724;
         }
-        
         .status-unpaid {
             background: #f8d7da;
             color: #721c24;
         }
-        
         .back-btn {
             display: inline-block;
             margin-bottom: 20px;
@@ -126,16 +107,13 @@ $days_diff = $diff->invert ? -$diff->days : $diff->days;
             border-radius: 5px;
             transition: background 0.3s;
         }
-        
         .back-btn:hover {
             background: #5a6268;
         }
-        
         .action-buttons {
             text-align: center;
             margin-top: 30px;
         }
-        
         .action-buttons a {
             display: inline-block;
             margin: 0 10px;
@@ -145,12 +123,10 @@ $days_diff = $diff->invert ? -$diff->days : $diff->days;
             font-weight: bold;
             transition: all 0.3s;
         }
-        
         .btn-edit {
             background: #007bff;
             color: white;
         }
-        
         .btn-edit:hover {
             background: #0056b3;
         }
@@ -214,8 +190,6 @@ $days_diff = $diff->invert ? -$diff->days : $diff->days;
                                     echo "Overdue by " . abs($days_diff) . " days";
                                 } elseif ($days_diff == 0) {
                                     echo "Due today";
-                                } elseif ($days_diff <= 7) {
-                                    echo "Due in $days_diff days";
                                 } else {
                                     echo "Due in $days_diff days";
                                 }
@@ -224,15 +198,7 @@ $days_diff = $diff->invert ? -$diff->days : $diff->days;
                         <?php endif; ?>
                     </div>
                 </div>
-                
-                <?php if ($bill['status'] && $bill['payment_date']): ?>
-                <div class="info-item">
-                    <div class="info-label">Payment Date</div>
-                    <div class="info-value"><?php echo date('F j, Y', strtotime($bill['payment_date'])); ?></div>
-                </div>
-                <?php endif; ?>
-                
-                
+
                 <?php if ($bill['tenant_email']): ?>
                 <div class="info-item">
                     <div class="info-label">Tenant Email</div>
@@ -240,10 +206,11 @@ $days_diff = $diff->invert ? -$diff->days : $diff->days;
                 </div>
                 <?php endif; ?>
             
-            <div class="action-buttons">
-                <a href="edit_bill.php?id=<?php echo $bill['id']; ?>" class="btn-edit">
-                    <i class="fas fa-edit"></i> Edit Bill
-                </a>
+                <div class="action-buttons">
+                    <a href="edit_bill.php?id=<?php echo $bill['id']; ?>" class="btn-edit">
+                        <i class="fas fa-edit"></i> Edit Bill
+                    </a>
+                </div>
             </div>
         </div>
     </div>
